@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Security Intelligence — Admin{% endblock %}
+{% block page_header %}
+  <div style="font-size:16px;font-weight:700;color:var(--text-primary);">Security Intelligence</div>
+{% endblock %}
+{% block content %}
+<div style="display:flex; flex-direction:column; gap:18px;">
+  <div style="display:flex; flex-wrap:wrap; gap:10px;">
+    {% for view, label in [('ai_risk','AI Risk'), ('trust','Trust Score'), ('fraud','Fraud Probability'), ('compliance','Compliance Score'), ('eligibility','Eligibility Score')] %}
+    <a href="{{ url_for('admin.security_intelligence') }}?view={{ view }}"
+       class="btn {% if selected == view %}btn-primary{% else %}btn-outline{% endif %} btn-sm"
+       style="padding: 10px 14px;">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="card" style="padding:24px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+      <div style="min-width:220px;">
+        <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:6px;">
+          {% if selected == 'ai_risk' %}AI Risk Intelligence{% elif selected == 'trust' %}Trust Analysis{% elif selected == 'fraud' %}Fraud Probability{% elif selected == 'compliance' %}Compliance Health{% else %}Eligibility Forecast{% endif %}
+        </div>
+        <div style="font-size:13px; color:var(--text-muted); max-width:640px;">
+          {% if selected == 'ai_risk' %}
+            See the intelligence engine’s risk classification and vendor block status for procurement decisions.
+          {% elif selected == 'trust' %}
+            Review the average vendor trust score and which suppliers are rated highest by the risk engine.
+          {% elif selected == 'fraud' %}
+            Identify vendors with elevated fraud probability, helping protect procurement from bad actors.
+          {% elif selected == 'compliance' %}
+            Monitor vendor compliance scores against policy and regulatory expectations.
+          {% else %}
+            Track vendor eligibility for tender invitations, based on competency and risk profile.
+          {% endif %}
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+        <div style="padding:16px 18px; background:var(--bg-subtle); border:1px solid var(--border); border-radius:12px; min-width:160px;">
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em;">Blocked Vendors</div>
+          <div class="value-danger" style="font-size:24px;">{{ blocked_count }}</div>
+        </div>
+        <div style="padding:16px 18px; background:var(--bg-subtle); border:1px solid var(--border); border-radius:12px; min-width:160px;">
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em;">Total Vendors</div>
+          <div class="value-neutral" style="font-size:24px;">{{ total_vendors }}</div>
+        </div>
+        <div style="padding:16px 18px; background:var(--bg-subtle); border:1px solid var(--border); border-radius:12px; min-width:160px;">
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em;">
+            {% if selected == 'trust' %}Avg Trust{% elif selected == 'fraud' %}Avg Fraud{% elif selected == 'compliance' %}Avg Compliance{% elif selected == 'eligibility' %}Avg Eligibility{% else %}Avg Risk Score{% endif %}
+          </div>
+          <div class="value-neutral" style="font-size:24px;">
+            {% if selected == 'trust' %}{{ avg_trust }}{% elif selected == 'fraud' %}{{ avg_fraud }}{% elif selected == 'compliance' %}{{ avg_compliance }}{% elif selected == 'eligibility' %}{{ avg_eligibility }}{% else %}
+              {{ avg_trust if avg_trust else '—' }}
+            {% endif %}
+          </div>
+        </div>
+        <div style="padding:16px 18px; background:var(--bg-subtle); border:1px solid var(--border); border-radius:12px; min-width:160px;">
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em;">Most Suspicious Vendor</div>
+          {% if top_fraud_vendor %}
+          <div style="font-size:18px; font-weight:700; color:#b91c1c; margin-bottom:4px;">{{ top_fraud_vendor.company_name }}</div>
+          <div style="font-size:22px; font-weight:800;" class="value-warning">{{ top_fraud_vendor.fraud_probability|round(3) }}</div>
+          <div style="font-size:12px; color:var(--text-muted);">Fraud probability</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:10px;"><strong>Login:</strong> {{ suspected_login or 'n/a' }}</div>
+          {% else %}
+          <div style="font-size:14px; color:var(--text-muted);">No vendor data found.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:18px; display:grid; grid-template-columns:1.5fr 1fr; gap:12px; align-items:start;">
+      <div class="card" style="padding:20px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+          <div style="width:44px; height:44px; border-radius:14px; background:#0ea5e9; display:flex; align-items:center; justify-content:center; color:white; font-size:20px;">📈</div>
+          <div>
+            <div style="font-size:13px; font-weight:700; color:var(--text-primary);">Fraud Probability Dataset</div>
+            <div style="font-size:12px; color:var(--text-muted);">Visualise the fraud scores for all vendors.</div>
+          </div>
+        </div>
+        <canvas id="fraudChart" style="max-height:320px;"></canvas>
+      </div>
+      <div class="card" style="padding:20px; background:#f8fafc; border:1px solid #cfd8e4;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+          <div style="font-size:20px;">⚠️</div>
+          <div>
+            <div style="font-size:13px; font-weight:700; color:var(--text-primary);">Suspected Fraud Vendor</div>
+            <div style="font-size:12px; color:var(--text-muted);">Logged vendor access flagged as suspicious.</div>
+          </div>
+        </div>
+        {% if top_fraud_vendor %}
+        <div style="padding:14px; border-radius:12px; background:white; border:1px solid #e2e8f0;">
+          <div style="font-size:15px; font-weight:700; color:#b91c1c;">{{ top_fraud_vendor.company_name }}</div>
+          <div style="font-size:12px; color:#475569; margin-top:4px;">{{ top_fraud_vendor.category or 'Unknown category' }}</div>
+          <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+            <span class="badge badge-danger">Fraud {{ (top_fraud_vendor.fraud_probability * 100)|round(1) }}%</span>
+            <span class="badge badge-warning">Status: {{ top_fraud_vendor.status }}</span>
+            <span class="badge badge-neutral">Blocked: {{ 'Yes' if top_fraud_vendor.ai_risk_blocked else 'No' }}</span>
+          </div>
+          <div style="margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px; color:#475569;">
+            <div><strong>Registration</strong></div>
+            <div>{{ top_fraud_vendor.registration_no or 'n/a' }}</div>
+            <div><strong>Phone</strong></div>
+            <div>{{ top_fraud_vendor.contact_phone or 'n/a' }}</div>
+            <div><strong>Orders</strong></div>
+            <div>{{ top_fraud_vendor.total_orders }}</div>
+            <div><strong>On-time delivery</strong></div>
+            <div>{{ top_fraud_vendor.on_time_delivery|default('—') }}%</div>
+            <div><strong>Reputation</strong></div>
+            <div>{{ top_fraud_vendor.reputation_score|default('—') }}</div>
+          </div>
+          <div style="margin-top:14px; font-size:13px; color:var(--text-muted);">Vendor login</div>
+          <div style="font-size:14px; font-weight:700;">{{ suspected_login or 'n/a' }}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Password: <code style="background:#eef2ff;padding:2px 6px;border-radius:6px;color:#1d4ed8;">password123</code></div>
+        </div>
+        {% else %}
+        <div style="font-size:13px; color:var(--text-muted);">No suspected fraud vendor available in the dataset.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div style="margin-top:18px; display:flex; gap:12px; flex-wrap:wrap;">
+      <div style="flex:1; min-width:240px; padding:16px 18px; background:white; border-radius:12px; border:1px solid #e2e8f0;">
+        <div style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Compliance Alerts</div>
+        <div class="value-danger" style="font-size:22px;">{{ low_compliance }}</div>
+        <div style="font-size:12px; color:var(--text-muted);">Vendors below the 70% compliance threshold.</div>
+      </div>
+      <div style="flex:1; min-width:240px; padding:16px 18px; background:white; border-radius:12px; border:1px solid #e2e8f0;">
+        <div style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Fraud Alerts</div>
+        <div class="value-warning" style="font-size:22px;">{{ high_fraud }}</div>
+        <div style="font-size:12px; color:var(--text-muted);">Vendors flagged with high fraud probability.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:24px; overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse; min-width:900px;">
+      <thead>
+        <tr class="tbl-head">
+          <th>Vendor</th>
+          <th>Category</th>
+          <th>Status</th>
+          <th>AI Risk</th>
+          <th>Trust</th>
+          <th>Fraud</th>
+          <th>Compliance</th>
+          <th>Eligibility</th>
+          <th>Blocked</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in vendors %}
+        <tr class="tbl-row" style="background: {% if selected == 'ai_risk' and v.ai_risk_blocked %}rgba(239, 68, 68, 0.06){% elif selected == 'compliance' and v.compliance_score is not none and v.compliance_score < 70 %}rgba(245, 158, 11, 0.08){% elif selected == 'fraud' and v.fraud_probability is not none and v.fraud_probability > 0.25 %}rgba(244, 63, 94, 0.08){% else %}transparent{% endif %};">
+          <td style="font-weight:700;color:var(--text-primary);">{{ v.company_name }}</td>
+          <td style="color:var(--text-muted);">{{ v.category or '—' }}</td>
+          <td><span class="badge badge-{{ status_badge(v.status) }}">{{ v.status }}</span></td>
+          <td style="font-weight:700; color: {% if v.ai_risk_blocked %}#dc2626{% else %}#0f172a{% endif %};">{{ 'Blocked' if v.ai_risk_blocked else 'OK' }}</td>
+          <td class="{% if v.trust_score is not none and v.trust_score >= 80 %}value-positive{% elif v.trust_score is not none and v.trust_score >= 60 %}value-warning{% else %}value-danger{% endif %}">{{ v.trust_score|default('—') }}</td>
+          <td class="{% if v.fraud_probability is not none and v.fraud_probability <= 0.15 %}value-positive{% elif v.fraud_probability is not none and v.fraud_probability <= 0.25 %}value-warning{% else %}value-danger{% endif %}">{{ v.fraud_probability|default('—') }}</td>
+          <td class="{% if v.compliance_score is not none and v.compliance_score >= 85 %}value-positive{% elif v.compliance_score is not none and v.compliance_score >= 70 %}value-warning{% else %}value-danger{% endif %}">{{ v.compliance_score|default('—') }}</td>
+          <td class="{% if v.eligibility_score is not none and v.eligibility_score >= 85 %}value-positive{% elif v.eligibility_score is not none and v.eligibility_score >= 70 %}value-warning{% else %}value-danger{% endif %}">{{ v.eligibility_score|default('—') }}</td>
+          <td>{% if v.ai_risk_blocked %}<span class="badge badge-danger">Blocked</span>{% else %}<span class="badge badge-success">Clear</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const fraudChartCtx = document.getElementById('fraudChart');
+  if (fraudChartCtx) {
+    new Chart(fraudChartCtx, {
+      type: 'bar',
+      data: {
+        labels: {{ fraud_chart_labels | tojson | safe }},
+        datasets: [{
+          label: 'Fraud Probability (%)',
+          data: {{ fraud_chart_data | tojson | safe }},
+          backgroundColor: '#fb7185',
+          borderColor: '#dc2626',
+          borderWidth: 1,
+          borderRadius: 10,
+          barPercentage: 0.65,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#475569', font: { size: 12 } }, grid: { display: false } },
+          y: { beginAtZero: true, max: 100, ticks: { color: '#475569', font: { size: 12 }, callback: v => `${v}%` }, grid: { color: 'rgba(148,163,184,0.25)' } }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: context => `${context.parsed.y}% fraud risk` } }
+        }
+      }
+    });
+  }
+</script>
+{% endblock %}

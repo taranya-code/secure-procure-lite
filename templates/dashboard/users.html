@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}User Management{% endblock %}
+{% block page_header %}
+  <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">User Management</div>
+{% endblock %}
+{% block content %}
+
+<!-- Add User Button -->
+<div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+  <button onclick="openModal('add-user-modal')" class="btn btn-primary">+ Add User</button>
+</div>
+
+<!-- Users Table -->
+<div class="card" style="overflow: hidden;">
+  <div style="padding: 14px 20px; background: var(--bg-subtle); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+    <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">All Users</span>
+    <span style="font-size: 11px; color: var(--text-muted); background: var(--border); padding: 1px 8px; border-radius: 20px;">{{ users|length }}</span>
+  </div>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead><tr class="tbl-head">
+      <th>Name</th>
+      <th>Email</th>
+      <th>Role</th>
+      <th>Department</th>
+      <th>Status</th>
+      <th>Joined</th>
+      <th>Actions</th>
+    </tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr class="tbl-row" style="{% if not u.is_active %}opacity: 0.55;{% endif %}">
+        <td>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0;">
+              {{ u.name[0].upper() }}
+            </div>
+            <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);">{{ u.name }}</span>
+          </div>
+        </td>
+        <td style="color: var(--text-secondary); font-size: 12.5px;">{{ u.email }}</td>
+        <td>
+          <span class="badge {% if u.role == 'ADMIN' %}badge-danger{% elif u.role == 'PROCUREMENT_OFFICER' %}badge-info{% elif u.role == 'APPROVER' %}badge-success{% elif u.role == 'VENDOR' %}badge-warning{% else %}badge-secondary{% endif %}">
+            {{ u.role.replace('_',' ') }}
+          </span>
+        </td>
+        <td style="color: var(--text-muted); font-size: 12.5px;">{{ u.department or '—' }}</td>
+        <td>
+          <span class="badge {% if u.is_active %}badge-success{% else %}badge-secondary{% endif %}">
+            {{ 'Active' if u.is_active else 'Inactive' }}
+          </span>
+        </td>
+        <td style="color: var(--text-muted); font-size: 12px; white-space: nowrap;">{{ u.created_at.strftime('%b %d, %Y') }}</td>
+        <td>
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <!-- Edit button -->
+            <button onclick="openEdit({{ u.id }}, '{{ u.name|replace("'","\\'")|e }}', '{{ u.role }}', '{{ u.department or '' }}')"
+              class="btn btn-ghost btn-sm" title="Edit">✏️</button>
+            <!-- Reset password -->
+            <button onclick="openResetPw({{ u.id }}, '{{ u.name|replace("'","\\'")|e }}')"
+              class="btn btn-ghost btn-sm" title="Reset password">🔑</button>
+            {% if u.id != current_user.id %}
+            <!-- Toggle active -->
+            <form action="/admin/users/{{ u.id }}/toggle" method="post" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <button type="submit" class="btn btn-ghost btn-sm" style="color: {% if u.is_active %}#ef4444{% else %}#16a34a{% endif %};" title="{{ 'Deactivate' if u.is_active else 'Activate' }}">
+                {{ '⏸' if u.is_active else '▶' }}
+              </button>
+            </form>
+            {% else %}
+            <span style="font-size: 11px; color: var(--text-muted); background: var(--bg-subtle); padding: 3px 10px; border-radius: 20px;">You</span>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Add User Modal ───────────────────────────────────────────── -->
+<div id="add-user-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div class="card" style="width:460px; padding:28px; position:relative;">
+    <div style="font-size:15px; font-weight:700; color:var(--text-primary); margin-bottom:20px;">Add New User</div>
+    <form action="/admin/users/add" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+        <div style="grid-column:1/-1;">
+          <label class="form-label">Full Name *</label>
+          <input type="text" name="name" required class="form-input" placeholder="e.g. Vikram Mehta"/>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label class="form-label">Email *</label>
+          <input type="email" name="email" required class="form-input" placeholder="user@company.com"/>
+        </div>
+        <div>
+          <label class="form-label">Password *</label>
+          <input type="password" name="password" required minlength="6" class="form-input" placeholder="Min 6 chars"/>
+        </div>
+        <div>
+          <label class="form-label">Role *</label>
+          <select name="role" required class="form-input">
+            {% for r in roles %}
+            <option value="{{ r }}">{{ r.replace('_',' ') }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label class="form-label">Department <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+          <input type="text" name="department" class="form-input" placeholder="e.g. Finance, IT, Operations"/>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; padding-top:14px; border-top:1px solid var(--border);">
+        <button type="button" onclick="closeModal('add-user-modal')" class="btn btn-outline">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Edit User Modal ──────────────────────────────────────────── -->
+<div id="edit-user-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div class="card" style="width:420px; padding:28px; position:relative;">
+    <div style="font-size:15px; font-weight:700; color:var(--text-primary); margin-bottom:20px;">Edit User</div>
+    <form id="edit-user-form" action="" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:14px;">
+        <div>
+          <label class="form-label">Full Name *</label>
+          <input type="text" name="name" id="edit-name" required class="form-input"/>
+        </div>
+        <div>
+          <label class="form-label">Role *</label>
+          <select name="role" id="edit-role" class="form-input">
+            {% for r in roles %}
+            <option value="{{ r }}">{{ r.replace('_',' ') }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Department <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+          <input type="text" name="department" id="edit-dept" class="form-input"/>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; padding-top:14px; border-top:1px solid var(--border);">
+        <button type="button" onclick="closeModal('edit-user-modal')" class="btn btn-outline">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Reset Password Modal ─────────────────────────────────────── -->
+<div id="reset-pw-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div class="card" style="width:380px; padding:28px; position:relative;">
+    <div style="font-size:15px; font-weight:700; color:var(--text-primary); margin-bottom:6px;">Reset Password</div>
+    <div id="reset-pw-name" style="font-size:13px; color:var(--text-secondary); margin-bottom:20px;"></div>
+    <form id="reset-pw-form" action="" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div style="margin-bottom:14px;">
+        <label class="form-label">New Password *</label>
+        <input type="password" name="password" required minlength="6" class="form-input" placeholder="Min 6 characters"/>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; padding-top:14px; border-top:1px solid var(--border);">
+        <button type="button" onclick="closeModal('reset-pw-modal')" class="btn btn-outline">Cancel</button>
+        <button type="submit" class="btn btn-danger">Reset Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function openModal(id) {
+  const m = document.getElementById(id);
+  m.style.display = 'flex';
+}
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
+// Close on backdrop click
+document.querySelectorAll('[id$="-modal"]').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
+});
+
+function openEdit(id, name, role, dept) {
+  document.getElementById('edit-user-form').action = '/admin/users/' + id + '/edit';
+  document.getElementById('edit-name').value = name;
+  document.getElementById('edit-role').value = role;
+  document.getElementById('edit-dept').value = dept;
+  openModal('edit-user-modal');
+}
+
+function openResetPw(id, name) {
+  document.getElementById('reset-pw-form').action = '/admin/users/' + id + '/reset-password';
+  document.getElementById('reset-pw-name').textContent = 'User: ' + name;
+  openModal('reset-pw-modal');
+}
+</script>
+{% endblock %}

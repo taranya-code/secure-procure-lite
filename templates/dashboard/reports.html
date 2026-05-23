@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Reports & Analytics{% endblock %}
+{% block page_header %}
+  <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">Reports &amp; Analytics</div>
+{% endblock %}
+{% block content %}
+
+<!-- KPI row -->
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+  <div class="stat-card" style="border-left: 4px solid #10b981;">
+    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">Total Spend</div>
+    <div style="font-size: 30px; font-weight: 800; color: var(--text-primary); line-height: 1.1; margin: 6px 0;">{{ fmt_currency(total_spend) }}</div>
+    <div style="font-size: 12px; color: var(--text-faint);">Estimated budget</div>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid #3b82f6;">
+    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">Total Requests</div>
+    <div style="font-size: 30px; font-weight: 800; color: var(--text-primary); line-height: 1.1; margin: 6px 0;">{{ total_requests }}</div>
+    <div style="font-size: 12px; color: var(--text-faint);">All time</div>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid #8b5cf6;">
+    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">Active Vendors</div>
+    <div style="font-size: 30px; font-weight: 800; color: var(--text-primary); line-height: 1.1; margin: 6px 0;">{{ total_vendors }}</div>
+    <div style="font-size: 12px; color: var(--text-faint);">Approved vendors</div>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid {{ '#22c55e' if compliance >= 80 else '#f59e0b' if compliance >= 60 else '#ef4444' }}; position: relative;">
+    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 0;">
+      <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">PO Completion Rate</div>
+      <span class="kpi-info-btn" data-tip="po-completion" style="width:15px;height:15px;border-radius:50%;background:var(--border);color:var(--text-muted);font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;" title="How is this calculated?">i</span>
+    </div>
+    <div style="font-size: 30px; font-weight: 800; color: {{ '#16a34a' if compliance >= 80 else '#d97706' if compliance >= 60 else '#dc2626' }}; line-height: 1.1; margin: 6px 0;">{{ compliance }}%</div>
+    <div style="font-size: 12px; color: var(--text-faint);">Requests reaching PO</div>
+    <div id="tip-po-completion" class="kpi-tooltip" style="display:none;">
+      <strong>PO Completion Rate</strong><br>
+      Requests with PO_ISSUED status ÷ total requests × 100<br><br>
+      <em>Measures what percentage of all purchase requests completed the full procurement cycle and resulted in a Purchase Order.</em><br><br>
+      Current: {{ compliance }}% &nbsp;({{ total_requests }} total requests)
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+  <div class="card" style="padding: 20px;">
+    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px;">Spend by Category</div>
+    <canvas id="spendChart" height="200"></canvas>
+  </div>
+  <div class="card" style="padding: 20px;">
+    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px;">Request Status Distribution</div>
+    <canvas id="statusChart" height="200"></canvas>
+  </div>
+</div>
+
+<!-- Vendor performance -->
+{% if vendors %}
+<div class="card" style="overflow: hidden;">
+  <div style="padding: 14px 20px; background: var(--bg-subtle); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+    <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Vendor Performance</span>
+    <span style="font-size: 11px; color: var(--text-faint); background: var(--border); padding: 1px 8px; border-radius: 20px;">{{ vendors|length }}</span>
+  </div>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead><tr class="tbl-head">
+      <th>Vendor</th>
+      <th>Category</th>
+      <th>Reputation Score</th>
+      <th>Total Orders</th>
+      <th>On-Time Delivery</th>
+    </tr></thead>
+    <tbody>
+      {% for v in vendors %}
+      <tr class="tbl-row">
+        <td style="font-size: 13px; font-weight: 600; color: var(--text-primary);">{{ v.company_name }}</td>
+        <td style="color: var(--text-muted);">{{ v.category or '—' }}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 80px; background: var(--border); border-radius: 4px; height: 5px;">
+              <div style="background: #3b82f6; width: {{ v.reputation_score }}%; height: 5px; border-radius: 4px;"></div>
+            </div>
+            <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{{ v.reputation_score|round(1) }}</span>
+          </div>
+        </td>
+        <td style="color: var(--text-muted); font-weight: 600;">{{ v.total_orders }}</td>
+        <td>
+          <span style="font-size: 13px; font-weight: 700; color: {% if v.on_time_delivery >= 90 %}#16a34a{% elif v.on_time_delivery >= 75 %}#d97706{% else %}#dc2626{% endif %};">
+            {{ v.on_time_delivery|round(1) }}%
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+const spendData = {{ spend_by_cat | tojson }};
+const statusData = {{ status_dist | tojson }};
+
+new Chart(document.getElementById('spendChart'), {
+  type: 'bar',
+  data: {
+    labels: spendData.map(d => d[0]),
+    datasets: [{
+      label: 'Budget ($)',
+      data: spendData.map(d => d[2]),
+      backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'],
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString('en-IN'), font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+      x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+    }
+  }
+});
+
+new Chart(document.getElementById('statusChart'), {
+  type: 'doughnut',
+  data: {
+    labels: statusData.map(d => d[0].replace(/_/g,' ')),
+    datasets: [{
+      data: statusData.map(d => d[1]),
+      backgroundColor: ['#e2e8f0','#bfdbfe','#fde68a','#bbf7d0','#fecaca','#c7d2fe','#a7f3d0','#93c5fd'],
+      borderWidth: 2,
+      borderColor: 'white',
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'right', labels: { font: { size: 11 }, padding: 12 } } },
+    cutout: '60%',
+  }
+});
+</script>
+{% endblock %}

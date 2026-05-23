@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel{% endblock %}
+{% block page_header %}
+  <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">Admin Panel</div>
+{% endblock %}
+{% block content %}
+<div style="max-width: 640px;">
+
+  <!-- Vendor risk summary -->
+  <div class="card" style="padding:24px; margin-bottom:20px; background:#eff6ff; border:1px solid #bfdbfe;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:15px; font-weight:700; color:#1e3a8a; margin-bottom:4px;">Vendor Risk Summary</div>
+        <div style="font-size:13px; color:#475569;">AI risk and blocked vendor visibility for the procurement admin team.</div>
+      </div>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <div style="padding:12px 16px; background:white; border-radius:12px; border:1px solid #c7d2fe; min-width:140px;">
+          <div style="font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.06em;">Blocked Vendors</div>
+          <div style="font-size:24px; font-weight:800; color:#dc2626;">{{ blocked_count }}</div>
+        </div>
+        <div style="padding:12px 16px; background:white; border-radius:12px; border:1px solid #c7d2fe; min-width:140px;">
+          <div style="font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.06em;">Total Vendors</div>
+          <div style="font-size:24px; font-weight:800; color:#1d4ed8;">{{ total_vendors }}</div>
+        </div>
+      </div>
+    </div>
+    {% if blocked_display %}
+    <div style="margin-top:16px; display:grid; gap:10px;">
+      <div style="font-size:13px; font-weight:700; color:#1e293b;">Recently Blocked Vendors</div>
+      {% for vendor in blocked_display %}
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:white; border-radius:10px; border:1px solid #e2e8f0;">
+        <div>
+          <div style="font-size:13px; font-weight:700; color:#0f172a;">{{ vendor.company_name }}</div>
+          <div style="font-size:12px; color:#475569;">{{ vendor.category or 'Unknown' }}</div>
+        </div>
+        <div style="font-size:12px; color:#dc2626; font-weight:700;">Blocked</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Reset & Seed -->
+  <div class="card" style="padding: 24px; margin-bottom: 20px;">
+    <div style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">Demo Data Controls</div>
+    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Reset the database and load fresh demo data for presentations.</div>
+
+    <div id="result-msg" style="display:none; margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; font-size: 13px;"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <!-- Reset + Seed (combined) -->
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px;">
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: #991b1b; margin-bottom: 2px;">Reset &amp; Reload Demo Data</div>
+          <div style="font-size: 12px; color: #dc2626;">Drops all data, recreates schema, and seeds fresh demo data in one step. <strong>Cannot be undone.</strong></div>
+        </div>
+        <button onclick="resetData()" id="reset-btn" class="btn btn-danger" style="flex-shrink: 0; margin-left: 16px;">
+          🔄 Reset &amp; Seed
+        </button>
+      </div>
+
+      <!-- Delete app data (keep users) -->
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;">
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: #854d0e; margin-bottom: 2px;">Delete App Data — Keep Users</div>
+          <div style="font-size: 12px; color: #d97706;">Deletes all requests, approvals, RFQs, vendors and audit logs. <strong>User accounts preserved</strong> — no need to log in again.</div>
+        </div>
+        <button onclick="deleteData()" id="delete-btn" class="btn" style="background:#f59e0b;color:white;flex-shrink:0;margin-left:16px;">
+          🧹 Clear Data
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Demo Login Panel visibility -->
+  <div class="card" style="padding: 24px; margin-bottom: 20px;">
+    <div style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">Demo Login Panel</div>
+    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Control whether the demo account shortcuts are visible on the login page.</div>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 10px;">
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">Show Demo Accounts on Login Page</div>
+        <div style="font-size: 12px; color: var(--text-muted);">When enabled, demo email shortcuts appear below the sign-in form.</div>
+      </div>
+      <label style="position: relative; display: inline-flex; align-items: center; cursor: pointer; flex-shrink: 0; margin-left: 16px;">
+        <input type="checkbox" id="demo-toggle" style="opacity:0;width:0;height:0;position:absolute;" onchange="toggleDemoPanel(this.checked)">
+        <span id="demo-toggle-track" style="display:inline-block;width:44px;height:24px;background:#d1d5db;border-radius:12px;transition:background 0.2s;position:relative;">
+          <span id="demo-toggle-thumb" style="position:absolute;top:2px;left:2px;width:20px;height:20px;background:white;border-radius:50%;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Change Demo Password -->
+  <div class="card" style="padding: 24px; margin-bottom: 20px;">
+    <div style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">Demo Accounts Password</div>
+    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Change the password for all 7 demo accounts at once (admin, officer, approver, auditor, vendor1–3).</div>
+    <div id="pwd-result" style="display:none; margin-bottom: 14px; padding: 10px 14px; border-radius: 8px; font-size: 13px;"></div>
+    <div style="display: flex; gap: 10px; align-items: flex-end;">
+      <div style="flex: 1;">
+        <label class="form-label">New Password (min 6 chars)</label>
+        <input type="password" id="demo-new-pwd" class="form-input" placeholder="Enter new password" minlength="6"/>
+      </div>
+      <button onclick="changeDemoPassword()" class="btn btn-primary" style="flex-shrink:0;">
+        🔑 Update Password
+      </button>
+    </div>
+  </div>
+
+  <!-- What gets seeded -->
+  <div class="card" style="padding: 20px; margin-bottom: 20px;">
+    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 14px;">Demo Dataset Contents</div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      {% for label, detail in [
+        ('7 Users', 'admin (Arjun), officer (Priya), approver (Rajesh), auditor (Meera), vendor1–3'),
+        ('3 Vendors', 'Tata Tech Supplies (★87.5), Infosys Procurement (★79.0), Wipro IT Solutions (★93.2)'),
+        ('Request 1', 'Data Centre Server Upgrade — ₹38,00,000 · PO ISSUED ✓'),
+        ('Request 2', 'Office Furniture — Bengaluru HQ — ₹22,00,000 · UNDER REVIEW'),
+        ('Request 3', 'Cloud Storage Expansion 500TB — ₹7,20,000 · DRAFT'),
+        ('RFQ + 3 Quotes', 'For Request 1 with AI scores: 91.8 / 78.5 / 65.2'),
+        ('Audit Logs', 'Full trail from creation to PO issuance'),
+        ('Notifications', 'Approval alerts, quote received, PO issued'),
+      ] %}
+      <div style="display: flex; gap: 12px; font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid #f8fafc;">
+        <span style="font-weight: 700; color: var(--text-primary); min-width: 130px; flex-shrink: 0;">{{ label }}</span>
+        <span style="color: var(--text-muted);">{{ detail }}</span>
+      </div>
+      {% endfor %}
+      <div style="margin-top: 8px; padding: 10px 14px; background: var(--bg-subtle); border-radius: 8px; font-size: 12.5px; color: var(--text-muted);">
+        All accounts use password: <code style="background: var(--border); padding: 1px 8px; border-radius: 4px; font-family: monospace; color: var(--text-primary);">password123</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick login links -->
+  <div class="card" style="padding: 20px;">
+    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 14px;">Quick Login (after Reset &amp; Seed)</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+      {% for email, role, color in [
+        ('admin@demo.com','Admin','badge-danger'),
+        ('officer@demo.com','Officer','badge-info'),
+        ('approver@demo.com','Approver','badge-success'),
+        ('auditor@demo.com','Auditor','badge-secondary'),
+        ('vendor1@demo.com','Vendor 1','badge-warning'),
+        ('vendor2@demo.com','Vendor 2','badge-warning'),
+      ] %}
+      <a href="/login"
+        style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; text-decoration: none; transition: all 0.15s;"
+        onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+        <span style="font-size: 12px; color: var(--text-secondary);">{{ email }}</span>
+        <span class="badge {{ color }}" style="font-size: 10px;">{{ role }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// ── Demo panel toggle ─────────────────────────────────────────────
+function applyToggleUI(checked) {
+  const track = document.getElementById('demo-toggle-track');
+  const thumb = document.getElementById('demo-toggle-thumb');
+  track.style.background = checked ? '#2563eb' : '#d1d5db';
+  thumb.style.left = checked ? '22px' : '2px';
+}
+(function() {
+  var show = localStorage.getItem('sp-demo-visible');
+  var checked = (show === null || show === 'true');
+  document.getElementById('demo-toggle').checked = checked;
+  applyToggleUI(checked);
+})();
+function toggleDemoPanel(checked) {
+  localStorage.setItem('sp-demo-visible', checked ? 'true' : 'false');
+  applyToggleUI(checked);
+}
+
+// ── Demo password change ──────────────────────────────────────────
+async function changeDemoPassword() {
+  const pwd = document.getElementById('demo-new-pwd').value.trim();
+  if (pwd.length < 6) {
+    showPwdResult(false, 'Password must be at least 6 characters.');
+    return;
+  }
+  const r = await fetch('/api/admin/set-demo-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+    body: JSON.stringify({ password: pwd }),
+  });
+  const data = await r.json();
+  showPwdResult(data.ok, data.ok ? '✓ ' + data.message : '✗ ' + data.error);
+  if (data.ok) {
+    localStorage.setItem('sp-demo-password', pwd);
+    document.getElementById('demo-new-pwd').value = '';
+  }
+}
+function showPwdResult(ok, msg) {
+  const el = document.getElementById('pwd-result');
+  el.textContent = msg;
+  el.style.cssText = 'display:block;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;' +
+    (ok ? 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;'
+        : 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;');
+}
+
+function showResult(ok, msg) {
+  const el = document.getElementById('result-msg');
+  el.textContent = msg;
+  el.style.cssText = 'display:block;margin-bottom:16px;padding:12px 16px;border-radius:8px;font-size:13px;' +
+    (ok
+      ? 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;'
+      : 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;');
+}
+
+async function resetData() {
+  if (!confirm('⚠ This will DELETE ALL DATA permanently. Continue?')) return;
+  const btn = document.getElementById('reset-btn');
+  btn.disabled = true; btn.textContent = 'Resetting…';
+  try {
+    const r = await fetch('/api/admin/reset', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token() }}' },
+    });
+    const data = await r.json();
+    showResult(data.ok, data.ok ? '✓ ' + data.message : '✗ ' + data.error);
+    if (data.ok) setTimeout(() => window.location.href = '/login', 2000);
+  } catch(e) { showResult(false, 'Request failed: ' + e); }
+  btn.disabled = false; btn.textContent = '🗑 Reset Database';
+}
+
+async function deleteData() {
+  if (!confirm('Delete all requests, approvals, RFQs, vendors and logs?\n\nUser accounts will be preserved — you stay logged in.')) return;
+  const btn = document.getElementById('delete-btn');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  try {
+    const r = await fetch('/api/admin/delete-data', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token() }}' },
+    });
+    const data = await r.json();
+    showResult(data.ok, data.ok ? '✓ ' + data.message : '✗ ' + data.error);
+    if (data.ok) setTimeout(() => window.location.href = '/dashboard', 2000);
+  } catch(e) { showResult(false, 'Request failed: ' + e); }
+  btn.disabled = false; btn.textContent = '🧹 Clear Data';
+}
+
+</script>
+{% endblock %}

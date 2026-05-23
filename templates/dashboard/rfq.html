@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}RFQ & Quotations{% endblock %}
+{% block page_header %}
+  <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">RFQ &amp; Quotations</div>
+{% endblock %}
+{% block content %}
+
+{% if current_user.role in ['PROCUREMENT_OFFICER', 'ADMIN'] and eligible %}
+<div class="card" style="padding: 20px; margin-bottom: 20px; border-left: 4px solid #8b5cf6;">
+  <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px;">Issue New RFQ</div>
+  <form action="/rfq/new" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+      <div>
+        <label class="form-label">Purchase Request *</label>
+        <select name="request_id" required class="form-input">
+          <option value="">Select approved request…</option>
+          {% for r in eligible %}
+          <option value="{{ r.id }}">{{ r.title }} ({{ fmt_currency(r.estimated_budget, r.currency) }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Deadline *</label>
+        <input type="date" name="deadline" required class="form-input"/>
+      </div>
+    </div>
+    <div style="margin-bottom: 16px;">
+      <label class="form-label">Invite Vendors * <span style="font-size: 11px; color: var(--text-faint); font-weight: 400;">(select one or more)</span></label>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; padding: 12px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; max-height: 140px; overflow-y: auto;">
+        {% for v in approved_vendors %}
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 8px; border-radius: 6px; background: white; border: 1px solid var(--border);">
+          <input type="checkbox" name="vendor_ids[]" value="{{ v.id }}" style="accent-color: #3b82f6;"/>
+          <span style="font-size: 12.5px; color: var(--text-secondary); font-weight: 500;">{{ v.company_name }}</span>
+          <span style="margin-left: auto; font-size: 11px; color: #d97706; font-weight: 600;">★{{ v.reputation_score }}</span>
+        </label>
+        {% else %}
+        <div style="grid-column: 1/-1; text-align: center; font-size: 13px; color: var(--text-faint); padding: 8px;">No approved vendors yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+    <div style="margin-bottom: 16px;">
+      <label class="form-label">Notes</label>
+      <textarea name="notes" rows="2" class="form-input" placeholder="e.g. Include warranty terms, delivery schedule, SLA requirements"></textarea>
+    </div>
+    <div style="display: flex; justify-content: flex-end;">
+      <button type="submit" class="btn btn-primary">Issue RFQ →</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card" style="overflow: hidden;">
+  <div style="padding: 14px 20px; background: var(--bg-subtle); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+    <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">All RFQs</span>
+    <span style="font-size: 11px; color: var(--text-faint); background: var(--border); padding: 1px 8px; border-radius: 20px;">{{ rfqs|length }}</span>
+  </div>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead><tr class="tbl-head">
+      <th>Request</th>
+      <th>Issued By</th>
+      <th>Deadline</th>
+      <th>Vendors</th>
+      <th>Quotes</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr></thead>
+    <tbody>
+      {% for rfq in rfqs %}
+      <tr class="tbl-row">
+        <td style="max-width: 240px;">
+          <span style="font-size: 13px; font-weight: 600; color: var(--text-primary); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ rfq.request.title }}">{{ rfq.request.title }}</span>
+        </td>
+        <td style="color: var(--text-muted); font-size: 12.5px;">{{ rfq.issuer.name }}</td>
+        <td style="color: var(--text-faint); font-size: 12px; white-space: nowrap;">{{ rfq.deadline.strftime('%b %d, %Y') }}</td>
+        <td>
+          <span style="background: #ede9fe; color: #5b21b6; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 20px;">{{ rfq.vendors|length }}</span>
+        </td>
+        <td>
+          <span style="background: #dbeafe; color: #1e40af; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 20px;">{{ rfq.quotations|length }}</span>
+        </td>
+        <td><span class="badge badge-{{ status_badge(rfq.status) }}">{{ rfq.status }}</span></td>
+        <td><a href="/rfq/{{ rfq.id }}" class="btn btn-ghost btn-sm">View →</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align: center; padding: 48px 16px; color: var(--text-faint); font-size: 13px;">
+        No RFQs issued yet.
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

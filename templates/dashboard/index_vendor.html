@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — SecureProcure{% endblock %}
+{% block page_header %}
+  <div>
+    <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">Dashboard</div>
+    <div style="font-size: 12px; color: var(--text-muted);">Welcome back, {{ current_user.name }}</div>
+  </div>
+{% endblock %}
+{% block content %}
+
+<!-- Vendor status banner -->
+{% if vendor %}
+<div style="background: {% if vendor.status == 'APPROVED' %}linear-gradient(135deg,#f0fdf4,#dcfce7){% elif vendor.status == 'PENDING' %}linear-gradient(135deg,#fffbeb,#fef9c3){% else %}linear-gradient(135deg,#fef2f2,#fee2e2){% endif %}; border: 1px solid {% if vendor.status == 'APPROVED' %}#bbf7d0{% elif vendor.status == 'PENDING' %}#fde68a{% else %}#fecaca{% endif %}; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+  <div>
+    <div style="font-size: 14px; font-weight: 700; color: {% if vendor.status == 'APPROVED' %}#166534{% elif vendor.status == 'PENDING' %}#854d0e{% else %}#991b1b{% endif %};">
+      {% if vendor.status == 'APPROVED' %}✓ Vendor Account Active{% elif vendor.status == 'PENDING' %}⏳ Vendor Account Pending Approval{% else %}✗ Vendor Account {{ vendor.status }}{% endif %}
+    </div>
+    <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">{{ vendor.company_name }} · Reg: {{ vendor.registration_no or 'Not set' }}</div>
+  </div>
+  <div style="text-align: right;">
+    <div style="font-size: 22px; font-weight: 800; color: var(--text-primary);">★ {{ vendor.reputation_score|round(1) }}</div>
+    <div style="font-size: 11px; color: var(--text-muted);">Reputation Score</div>
+  </div>
+</div>
+{% endif %}
+
+<!-- KPI Cards -->
+<div style="display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px;">
+  <div class="stat-card">
+    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;">Open RFQs</div>
+    <div style="font-size: 32px; font-weight: 800; color: #2563eb;">{{ active_rfqs }}</div>
+    <div style="font-size: 12px; color: var(--text-faint); margin-top: 4px;">Waiting for your quote</div>
+    <a href="/my-quotes" style="display: inline-block; margin-top: 10px; font-size: 12px; color: #2563eb; font-weight: 600;">Submit Quotes →</a>
+  </div>
+  <div class="stat-card">
+    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;">Total Quotes Submitted</div>
+    <div style="font-size: 32px; font-weight: 800; color: var(--text-primary);">{{ my_quotes }}</div>
+    <div style="font-size: 12px; color: var(--text-faint); margin-top: 4px;">All time</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;">Quotes Won</div>
+    <div style="font-size: 32px; font-weight: 800; color: #16a34a;">{{ selected_quotes }}</div>
+    <div style="font-size: 12px; color: var(--text-faint); margin-top: 4px;">PO issued</div>
+  </div>
+</div>
+
+{% if vendor %}
+<!-- Performance stats -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+  <div class="card" style="padding: 20px;">
+    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 14px;">Performance Metrics</div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <span style="font-size: 12px; color: var(--text-muted);">On-Time Delivery</span>
+          <span style="font-size: 12px; font-weight: 700; color: {% if vendor.on_time_delivery >= 90 %}#16a34a{% elif vendor.on_time_delivery >= 75 %}#d97706{% else %}#dc2626{% endif %};">{{ vendor.on_time_delivery|round(1) }}%</span>
+        </div>
+        <div style="background: var(--border); border-radius: 4px; height: 6px;">
+          <div style="background: {% if vendor.on_time_delivery >= 90 %}#22c55e{% elif vendor.on_time_delivery >= 75 %}#f59e0b{% else %}#ef4444{% endif %}; width: {{ vendor.on_time_delivery }}%; height: 6px; border-radius: 4px;"></div>
+        </div>
+      </div>
+      <div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <span style="font-size: 12px; color: var(--text-muted);">Reputation Score</span>
+          <span style="font-size: 12px; font-weight: 700; color: #2563eb;">{{ vendor.reputation_score|round(1) }}/100</span>
+        </div>
+        <div style="background: var(--border); border-radius: 4px; height: 6px;">
+          <div style="background: #3b82f6; width: {{ vendor.reputation_score }}%; height: 6px; border-radius: 4px;"></div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding-top: 4px; border-top: 1px solid #f1f5f9;">
+        <span style="font-size: 12px; color: var(--text-muted);">Total Orders Completed</span>
+        <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{{ vendor.total_orders }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="padding: 20px;">
+    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 14px;">Recent Notifications</div>
+    {% if recent_notifs %}
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      {% for n in recent_notifs %}
+      <div style="display: flex; align-items: flex-start; gap: 8px; padding: 8px; border-radius: 8px; background: {% if not n.read %}#eff6ff{% else %}#fafafa{% endif %};">
+        <span style="font-size: 14px; flex-shrink: 0;">{{ '✅' if 'APPROVED' in n.type else '📨' if 'RFQ' in n.type else '💬' if 'QUOT' in n.type else '🔔' }}</span>
+        <div>
+          <div style="font-size: 12px; font-weight: 600; color: var(--text-primary);">{{ n.title }}</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 1px;">{{ n.created_at.strftime('%b %d') }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="font-size: 13px; color: var(--text-faint); text-align: center; padding: 16px 0;">No notifications yet</p>
+    {% endif %}
+    <a href="/notifications" style="display: block; text-align: center; margin-top: 10px; font-size: 12px; color: #2563eb; font-weight: 600;">View All →</a>
+  </div>
+</div>
+{% endif %}
+
+<div class="card" style="padding: 20px; margin-bottom: 24px;">
+  <div style="display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 18px;">
+    <div>
+      <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">Trust Score</div>
+      <div style="font-size: 24px; font-weight: 800; color: #16a34a;">{{ vendor.trust_score|round(1) }}/100</div>
+    </div>
+    <div>
+      <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">Compliance</div>
+      <div style="font-size: 24px; font-weight: 800; color: #2563eb;">{{ vendor.compliance_score|round(1) }}%</div>
+    </div>
+    <div>
+      <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">Risk Status</div>
+      <div style="font-size: 24px; font-weight: 800; color: {% if vendor.ai_risk_blocked %}#dc2626{% else %}#16a34a{% endif %};">{% if vendor.ai_risk_blocked %}Blocked{% else %}Approved{% endif %}</div>
+    </div>
+  </div>
+  <form action="/vendor/upload-document" method="post" enctype="multipart/form-data" style="display: grid; gap: 12px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div>
+      <label class="form-label">Secure Document Upload</label>
+      <input type="file" name="document" class="form-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" />
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span style="font-size: 12px; color: var(--text-faint);">Use this secure channel for bid support documentation and compliance evidence.</span>
+      <button type="submit" class="btn btn-primary">Upload Document</button>
+    </div>
+  </form>
+</div>
+
+<!-- CTA if pending -->
+{% if active_rfqs > 0 %}
+<div style="background: linear-gradient(135deg,#1e40af,#3b82f6); border-radius: 12px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;">
+  <div>
+    <div style="font-size: 15px; font-weight: 700; color: white;">{{ active_rfqs }} RFQ{{ 's' if active_rfqs != 1 }} waiting for your response</div>
+    <div style="font-size: 12px; color: #bfdbfe; margin-top: 3px;">Submit your quotations before the deadline to be considered.</div>
+  </div>
+  <a href="/my-quotes" class="btn" style="background: white; color: #1e40af; flex-shrink: 0;">Submit Quotes →</a>
+</div>
+{% endif %}
+
+{% endblock %}

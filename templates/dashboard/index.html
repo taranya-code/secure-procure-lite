@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — SecureProcure{% endblock %}
+{% block page_header %}
+  <div>
+    <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">Dashboard</div>
+    <div style="font-size: 12px; color: var(--text-muted);">Welcome back, {{ current_user.name }}</div>
+  </div>
+{% endblock %}
+{% block content %}
+
+<!-- KPI Row -->
+<div style="display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px;">
+  <div class="stat-card" style="border-left: 4px solid #3b82f6;">
+    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">Total Requests</div>
+    <div style="font-size: 34px; font-weight: 800; color: var(--text-primary); line-height: 1.1; margin: 6px 0;">{{ total_requests }}</div>
+    <div style="font-size: 12px; color: var(--text-faint);">All time</div>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid #10b981;">
+    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">Total Spend</div>
+    <div style="font-size: 34px; font-weight: 800; color: var(--text-primary); line-height: 1.1; margin: 6px 0;">{{ fmt_currency(total_spend) }}</div>
+    <div style="font-size: 12px; color: var(--text-faint);">Estimated budget</div>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid {{ '#ef4444' if pending_approvals > 0 else 'var(--border)' }};">
+    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">Pending Approvals</div>
+    <div style="font-size: 34px; font-weight: 800; color: {{ '#dc2626' if pending_approvals > 0 else 'var(--text-primary)' }}; line-height: 1.1; margin: 6px 0;">{{ pending_approvals }}</div>
+    <div style="font-size: 12px; color: var(--text-faint);">Awaiting your review</div>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid {{ '#22c55e' if compliance >= 80 else '#f59e0b' if compliance >= 60 else '#ef4444' }}; position: relative;">
+    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 0;">
+      <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">Compliance Score</div>
+      <span class="kpi-info-btn" data-tip="compliance-score" style="width:15px;height:15px;border-radius:50%;background:var(--border);color:var(--text-muted);font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;" title="How is this calculated?">i</span>
+    </div>
+    <div style="font-size: 34px; font-weight: 800; color: {{ '#16a34a' if compliance >= 80 else '#d97706' if compliance >= 60 else '#dc2626' }}; line-height: 1.1; margin: 6px 0;">{{ compliance }}%</div>
+    <div style="font-size: 12px; color: var(--text-faint);">Approval health</div>
+    <div id="tip-compliance-score" class="kpi-tooltip" style="display:none;">
+      <strong>Compliance Score</strong><br>
+      (Submitted requests − Rejected) ÷ Submitted × 100<br><br>
+      <em>Measures approval quality — how many submitted requests passed through the approval process without being rejected. High score = well-justified requests.</em><br><br>
+      Note: different from PO Completion Rate on the Reports page, which measures how many requests reached a Purchase Order.
+    </div>
+  </div>
+</div>
+
+<!-- Alert row -->
+{% if overdue > 0 or fraud_alerts > 0 %}
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 12px; margin-bottom: 24px;">
+  {% if overdue > 0 %}
+  <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 14px 18px; display: flex; align-items: center; gap: 12px;">
+    <div style="font-size: 24px;">⏰</div>
+    <div>
+      <div style="font-size: 20px; font-weight: 800; color: #92400e;">{{ overdue }}</div>
+      <div style="font-size: 12px; color: #b45309; font-weight: 600;">Overdue Approvals</div>
+      <div style="font-size: 11px; color: #d97706;">SLA breached &gt;3 days</div>
+    </div>
+  </div>
+  {% endif %}
+  {% if fraud_alerts > 0 %}
+  <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 14px 18px; display: flex; align-items: center; gap: 12px;">
+    <div style="font-size: 24px;">⚠️</div>
+    <div>
+      <div style="font-size: 20px; font-weight: 800; color: #991b1b;">{{ fraud_alerts }}</div>
+      <div style="font-size: 12px; color: #dc2626; font-weight: 600;">Fraud Alerts</div>
+      <div style="font-size: 11px; color: #ef4444;">Self-approval attempts blocked</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if status_counts %}
+<!-- Status pipeline -->
+<div class="card" style="padding: 20px; margin-bottom: 24px;">
+  <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px;">Request Pipeline</div>
+  <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+    {% for status, color in [('DRAFT','#94a3b8'),('SUBMITTED','#3b82f6'),('UNDER_REVIEW','#f59e0b'),('APPROVED','#10b981'),('RFQ_ISSUED','#8b5cf6'),('QUOTED','#06b6d4'),('PO_ISSUED','#16a34a'),('REJECTED','#ef4444')] %}
+    {% if status_counts.get(status, 0) > 0 %}
+    <div style="background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; text-align: center; min-width: 90px;">
+      <div style="font-size: 22px; font-weight: 800; color: {{ color }};">{{ status_counts.get(status, 0) }}</div>
+      <div style="font-size: 10px; font-weight: 600; color: var(--text-muted); margin-top: 2px;">{{ status.replace('_',' ') }}</div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Quick actions -->
+{% if current_user.role in ['PROCUREMENT_OFFICER', 'ADMIN'] %}
+<div style="background: linear-gradient(135deg,#1e3a5f,#1e40af); border-radius: 12px; padding: 18px 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+  <div>
+    <div style="font-size: 14px; font-weight: 700; color: white;">Ready to start a new procurement?</div>
+    <div style="font-size: 12px; color: #93c5fd; margin-top: 3px;">Create a purchase request and start the approval workflow.</div>
+  </div>
+  <a href="/requests/new" class="btn" style="background: white; color: #1e40af; flex-shrink: 0; font-weight: 700;">+ New Request</a>
+</div>
+{% endif %}
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+  <!-- Spend by Category -->
+  <div class="card" style="padding: 20px;">
+    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px;">Spend by Category</div>
+    {% if spend_by_cat %}
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      {% for cat, count, total in spend_by_cat %}
+      {% set pct = (total / (spend_by_cat | map(attribute=2) | sum) * 100) | round(0) %}
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+          <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">{{ cat }}</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 11px; color: var(--text-faint);">{{ count }} req{{ 's' if count != 1 }}</span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{{ fmt_currency(total) }}</span>
+          </div>
+        </div>
+        <div style="background: var(--bg-subtle); border-radius: 4px; height: 5px;">
+          <div style="background: #3b82f6; width: {{ pct }}%; height: 5px; border-radius: 4px; transition: width 0.5s;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; color: var(--text-faint); padding: 24px 0; font-size: 13px;">No spend data yet</div>
+    {% endif %}
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="card" style="padding: 20px;">
+    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px;">Recent Activity</div>
+    {% if recent_activity %}
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      {% for log in recent_activity %}
+      <div style="display: flex; gap: 10px; align-items: flex-start; padding-bottom: 10px; border-bottom: 1px solid var(--border);">
+        <div style="width: 7px; height: 7px; border-radius: 50%; background: {% if log.action == 'CREATE' %}#3b82f6{% elif log.action == 'APPROVAL_DECISION' %}#10b981{% elif log.action in ['SUBMIT','SUBMIT_QUOTE'] %}#8b5cf6{% elif 'BLOCKED' in log.action %}#ef4444{% else %}#94a3b8{% endif %}; margin-top: 5px; flex-shrink: 0;"></div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 12.5px; color: var(--text-primary);">
+            <span style="font-weight: 600;">{{ log.action.replace('_',' ') }}</span>
+            <span style="color: var(--text-muted);"> · {{ log.entity_type.replace('_',' ') }}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--text-faint); margin-top: 1px;">
+            {% if log.user %}{{ log.user.name }}{% else %}System{% endif %} · {{ log.created_at.strftime('%b %d, %H:%M') }}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; color: var(--text-faint); padding: 24px 0; font-size: 13px;">No activity yet</div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block title %}App Documentation — SecureProcure{% endblock %}
+{% block page_header %}
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <div>
+      <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">Documentation</div>
+      <div style="font-size: 12px; color: var(--text-muted);">How SecureProcure works — roles, workflows, glossary</div>
+    </div>
+  </div>
+{% endblock %}
+{% block content %}
+
+<style>
+  /* Print: hide sidebar, topbar, print-btn — show only docs content */
+  @media print {
+    aside, header, #print-btn, .flash-success, .flash-danger, .flash-warning, .flash-info { display: none !important; }
+    /* Break out of the fixed-height scrollable flex layout */
+    body, html { height: auto !important; overflow: visible !important; background: white !important; color: black !important; }
+    body > div { display: block !important; height: auto !important; overflow: visible !important; }
+    .main-content { overflow: visible !important; height: auto !important; padding: 0 !important; }
+    .card { border: 1px solid #ccc !important; box-shadow: none !important; break-inside: avoid; page-break-inside: avoid; }
+    .docs-section { margin-bottom: 24px; }
+    a { color: black !important; }
+  }
+</style>
+
+<!-- Print button -->
+<div style="display: flex; justify-content: flex-end; margin-bottom: 20px;" id="print-btn">
+  <button onclick="window.print()" class="btn btn-outline" style="gap: 8px;">
+    🖨 Print / Save as PDF
+  </button>
+</div>
+
+<!-- ── 1. What is SecureProcure? ───────────────────────────────────── -->
+<div class="card docs-section" style="padding: 24px; margin-bottom: 20px;">
+  <div style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 6px;">What is SecureProcure?</div>
+  <div style="font-size: 13px; color: var(--text-muted); line-height: 1.7;">
+    <p style="margin: 0 0 10px;">
+      <strong style="color: var(--text-primary);">SecureProcure</strong> is an enterprise procurement management system designed to bring transparency, control, and auditability to an organisation's purchasing process. It digitises the entire journey — from an employee raising a purchase request to a vendor being paid — replacing ad-hoc emails and spreadsheets with a structured, role-based workflow.
+    </p>
+    <p style="margin: 0 0 10px;">
+      The system enforces a strict chain of approvals, maintains a tamper-evident audit log of every action, and uses AI-assisted analysis to help procurement officers select the best vendor quote. All monetary amounts are tracked in INR (₹), suitable for Indian organisations.
+    </p>
+    <p style="margin: 0;">
+      <strong style="color: var(--text-primary);">Key benefits:</strong> Prevent unauthorised purchases · Ensure multi-level approvals · Maintain a full audit trail for compliance · Streamline vendor comparison with AI scoring · Block self-approval fraud automatically.
+    </p>
+  </div>
+</div>
+
+<!-- ── 2. User Roles ───────────────────────────────────────────────── -->
+<div class="card docs-section" style="padding: 24px; margin-bottom: 20px;">
+  <div style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 16px;">User Roles</div>
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+
+    <div style="display: flex; gap: 16px; padding: 14px; background: var(--bg-subtle); border-radius: 10px; border: 1px solid var(--border);">
+      <div style="font-size: 22px; flex-shrink: 0;">🔴</div>
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Admin</div>
+        <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.6;">
+          Full system access. Manages user accounts (create, edit, activate/deactivate, reset passwords). Can do everything a Procurement Officer and Approver can do. Accesses the Admin Panel for database management and this Docs page. Responsible for system health and user governance.
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 16px; padding: 14px; background: var(--bg-subtle); border-radius: 10px; border: 1px solid var(--border);">
+      <div style="font-size: 22px; flex-shrink: 0;">🔵</div>
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Procurement Officer</div>
+        <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.6;">
+          Creates and manages Purchase Requests (PRs). Submits PRs for approval. Once a PR is approved, issues RFQs (Request for Quotation) to vendors. Reviews vendor quotes, runs AI analysis, selects the winning quote, and issues the Purchase Order (PO). Cannot approve their own requests.
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 16px; padding: 14px; background: var(--bg-subtle); border-radius: 10px; border: 1px solid var(--border);">
+      <div style="font-size: 22px; flex-shrink: 0;">🟢</div>
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Approver</div>
+        <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.6;">
+          Reviews submitted Purchase Requests and either approves or rejects them with a comment. Cannot approve requests they created themselves (self-approval is blocked and logged as a fraud alert). Sees a count of pending approvals in the sidebar badge.
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 16px; padding: 14px; background: var(--bg-subtle); border-radius: 10px; border: 1px solid var(--border);">
+      <div style="font-size: 22px; flex-shrink: 0;">⚫</div>
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Auditor</div>
+        <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.6;">
+          Read-only access for compliance and governance. Views all audit logs, purchase requests, RFQs, and vendor data. Cannot create, edit, or approve anything. Uses the Audit Logs page to review every action taken in the system, including fraud alert entries.
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 16px; padding: 14px; background: var(--bg-subtle); border-radius: 10px; border: 1px solid var(--border);">
+      <div style="font-size: 22px; flex-shrink: 0;">🟡</div>
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Vendor</div>
+        <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.6;">
+          External supplier who receives RFQs and submits quotations. Logs in to see their assigned RFQs and submit quotes with pricing, delivery terms, and validity. Can only see their own quotes — not other vendors' bids.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── 3. Key Terms ────────────────────────────────────────────────── -->
+<div class="card docs-section" style="padding: 24px; margin-bottom: 20px;">
+  <div style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 16px;">Key Terms — Glossary</div>
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+
+    {% for term, definition in [
+      ('Purchase Request (PR)', 'A formal internal request to procure goods or services. Raised by a Procurement Officer or Admin. Contains a title, category, estimated budget, department, justification, and line items. Must be approved before any purchasing can happen.'),
+      ('RFQ — Request for Quotation', 'A document sent to one or more vendors asking them to provide a price quote for supplying the goods/services specified in an approved PR. The officer sets a response deadline. Vendors respond with formal quotations.'),
+      ('Quotation / Quote', 'A vendor\'s formal response to an RFQ. Contains the total amount, delivery timeline (days), validity period, and any notes. Multiple vendors can quote on the same RFQ, enabling competitive comparison.'),
+      ('Purchase Order (PO)', 'The final document issued to the winning vendor confirming the purchase. In SecureProcure, a PR reaches PO_ISSUED status when the officer selects the best quote after AI analysis.'),
+      ('AI Analysis', 'An automated scoring step where the system calls the Claude AI API to evaluate all quotes on an RFQ. Each quote is scored 0–100 based on price competitiveness, delivery speed, vendor reputation, and validity. A summary reason is provided for each score. Works in mock mode if no API key is configured.'),
+      ('Audit Log', 'An immutable record of every significant action in the system: request creation, submission, approval decisions, RFQ issuance, quote submission, PO issuance, and fraud alerts. Each entry records who did what, when, and on which entity.'),
+      ('Fraud Alert', 'Automatically logged when a user attempts to approve their own purchase request. The system blocks the action and records it as APPROVAL_SELF_APPROVAL_BLOCKED in the audit log.'),
+      ('Compliance Score (Dashboard)', 'Approval quality metric: (Submitted − Rejected) ÷ Submitted × 100. Measures how well requests are justified — a high score means most requests pass approval without rejection. Found on the main Dashboard.'),
+      ('PO Completion Rate (Reports)', 'Procurement completion metric: PO_ISSUED requests ÷ Total requests × 100. Measures what percentage of all requests completed the full cycle and resulted in a Purchase Order. Found on the Reports page. These two metrics are intentionally different — one measures approval health, the other measures end-to-end completion.'),
+      ('SLA Breach / Overdue', 'An approval is flagged as overdue if it has been in SUBMITTED or UNDER_REVIEW status for more than 3 days without a decision. Shown as a warning on the dashboard.'),
+    ] %}
+    <div style="display: flex; gap: 12px; padding: 10px 14px; background: var(--bg-subtle); border-radius: 8px; border: 1px solid var(--border);">
+      <div style="font-size: 12.5px; font-weight: 700; color: var(--text-primary); min-width: 200px; flex-shrink: 0;">{{ term }}</div>
+      <div style="font-size: 12.5px; color: var(--text-muted); line-height: 1.6;">{{ definition }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── 4. Full Workflow ────────────────────────────────────────────── -->
+<div class="card docs-section" style="padding: 24px; margin-bottom: 20px;">
+  <div style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 16px;">Full Procurement Workflow</div>
+
+  <div style="display: flex; flex-direction: column; gap: 4px;">
+    {% for step, actor, desc, status_col in [
+      ('Step 1 — Create a Purchase Request', 'Procurement Officer / Admin', 'Go to Purchase Requests → New Request. Fill in the title, category (IT / Furniture / Infrastructure / etc.), estimated budget in ₹, department, justification, and add line items. Save as DRAFT.', '#94a3b8'),
+      ('Step 2 — Submit for Approval', 'Procurement Officer / Admin', 'Open the draft request and click Submit. The status changes to SUBMITTED. The system notifies all Approvers that a new request is pending review.', '#3b82f6'),
+      ('Step 3 — Approve or Reject', 'Approver / Admin', 'Go to Approvals. Review the request details, budget, and justification. Click Approve (status → APPROVED) or Reject with a reason (status → REJECTED). Self-approval is blocked automatically.', '#10b981'),
+      ('Step 4 — Issue RFQ to Vendors', 'Procurement Officer / Admin', 'Open the approved request and click Issue RFQ. Select which registered vendors to invite, set a quote deadline, and add any special instructions. Status becomes RFQ_ISSUED. Vendors are notified.', '#8b5cf6'),
+      ('Step 5 — Vendors Submit Quotes', 'Vendor', 'Each invited vendor logs in, navigates to My Quotes, and submits a quotation with their price, delivery days, and validity period. Status moves to QUOTED once at least one quote is received.', '#06b6d4'),
+      ('Step 6 — AI Analysis', 'Procurement Officer / Admin', 'Open the RFQ and click Analyse Quotes. The system scores all quotes 0–100 using AI (or mock scores in demo mode). Each quote gets a score and a 2-sentence justification to help with the decision.', '#f59e0b'),
+      ('Step 7 — Select Winner and Issue PO', 'Procurement Officer / Admin', 'Review AI scores, then click Select on the best quote. The status changes to PO_ISSUED. The winning vendor is notified. The full audit trail is now complete.', '#16a34a'),
+    ] %}
+    <div style="display: flex; gap: 0; align-items: stretch;">
+      <div style="display: flex; flex-direction: column; align-items: center; margin-right: 14px;">
+        <div style="width: 12px; height: 12px; border-radius: 50%; background: {{ status_col }}; flex-shrink: 0; margin-top: 18px;"></div>
+        {% if not loop.last %}
+        <div style="width: 2px; flex: 1; background: var(--border); min-height: 20px;"></div>
+        {% endif %}
+      </div>
+      <div style="padding: 12px 0 12px; flex: 1; {% if not loop.last %}border-bottom: 1px solid var(--border);{% endif %}">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+          <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{{ step }}</span>
+          <span style="font-size: 11px; font-weight: 600; color: {{ status_col }}; background: var(--bg-subtle); border: 1px solid var(--border); padding: 1px 8px; border-radius: 12px;">{{ actor }}</span>
+        </div>
+        <div style="font-size: 12.5px; color: var(--text-muted); line-height: 1.6;">{{ desc }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── 5. Approval Process Details ────────────────────────────────── -->
+<div class="card docs-section" style="padding: 24px; margin-bottom: 20px;">
+  <div style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 14px;">Approval Process — Who Approves What</div>
+  <div style="font-size: 13px; color: var(--text-muted); line-height: 1.7;">
+
+    <p style="margin: 0 0 12px;"><strong style="color: var(--text-primary);">Purchase Requests (PRs)</strong> require approval from a user with the <strong>Approver</strong> or <strong>Admin</strong> role. The officer who created the PR cannot approve it — this is a hard system rule enforced at every attempt, and any bypass attempt is permanently logged as a fraud alert.</p>
+
+    <p style="margin: 0 0 12px;"><strong style="color: var(--text-primary);">RFQs</strong> do not require a separate approval step. Once the PR is approved, the Procurement Officer has authority to issue an RFQ directly. The approval of the PR implicitly authorises the procurement up to the estimated budget.</p>
+
+    <p style="margin: 0 0 12px;"><strong style="color: var(--text-primary);">Quote selection / PO issuance</strong> is the responsibility of the Procurement Officer (or Admin). No additional approval is required to select a vendor once the RFQ process is complete — the selection is logged in the audit trail.</p>
+
+    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 16px; font-size: 12.5px; color: #991b1b;">
+      <strong>Fraud Prevention:</strong> The system automatically blocks any attempt by a user to approve a request they created. The attempt is recorded in the audit log as <code style="background: #fee2e2; padding: 1px 6px; border-radius: 4px;">APPROVAL_SELF_APPROVAL_BLOCKED</code> and is visible to Auditors and Admins.
+    </div>
+  </div>
+</div>
+
+<!-- ── 6. Step-by-Step Guide for New Users ───────────────────────── -->
+<div class="card docs-section" style="padding: 24px; margin-bottom: 20px;">
+  <div style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 14px;">Quick Start Guide — New to the App?</div>
+  <div style="font-size: 13px; color: var(--text-muted); line-height: 1.7;">
+
+    <div style="margin-bottom: 16px;">
+      <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">If you are a Procurement Officer:</div>
+      <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px;">
+        <li>Log in → go to <strong>Purchase Requests</strong> → click <strong>+ New Request</strong></li>
+        <li>Fill in title, category, budget, department, and add at least one line item → Save as Draft</li>
+        <li>Open your draft → click <strong>Submit for Approval</strong></li>
+        <li>Wait for an Approver to review. You'll get a notification when a decision is made.</li>
+        <li>Once approved, open the request → click <strong>Issue RFQ</strong> → select vendors → set deadline → submit</li>
+        <li>Vendors will log in and submit quotes. Monitor the RFQ page for incoming quotes.</li>
+        <li>When quotes are in, click <strong>Analyse Quotes</strong> for AI scoring → review scores → click <strong>Select</strong> on the best quote → PO is issued</li>
+      </ol>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">If you are an Approver:</div>
+      <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px;">
+        <li>Log in → go to <strong>Approvals</strong> (the sidebar badge shows how many are pending)</li>
+        <li>Click on a pending request to review the details, budget justification, and line items</li>
+        <li>Click <strong>Approve</strong> to proceed, or <strong>Reject</strong> with a reason</li>
+        <li>Your decision is logged in the audit trail immediately</li>
+      </ol>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">If you are a Vendor:</div>
+      <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px;">
+        <li>Log in → go to <strong>My Quotes</strong></li>
+        <li>You'll see all RFQs you've been invited to respond to</li>
+        <li>Click on an RFQ → fill in your quote amount, delivery days, validity period, and any notes</li>
+        <li>Submit your quote before the deadline</li>
+      </ol>
+    </div>
+
+    <div>
+      <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">If you are an Auditor:</div>
+      <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px;">
+        <li>Log in → go to <strong>Audit Logs</strong> to review all system actions</li>
+        <li>Use filters to narrow by action type, entity, or date range</li>
+        <li>View <strong>Purchase Requests</strong>, <strong>RFQ & Quotations</strong>, and <strong>Vendors</strong> in read-only mode</li>
+        <li>Check <strong>Reports</strong> for spend analytics and compliance metrics</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ── 7. Demo Accounts ────────────────────────────────────────────── -->
+<div class="card docs-section" style="padding: 24px; margin-bottom: 20px;">
+  <div style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 14px;">Demo Accounts</div>
+  <div style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">All accounts use password: <code style="background: var(--bg-subtle); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-family: monospace; color: var(--text-primary);">password123</code></div>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr class="tbl-head">
+        <th>Email</th>
+        <th>Name</th>
+        <th>Role</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for email, name, role, badge in [
+        ('admin@demo.com',    'Arjun Sharma',        'Admin',                'badge-danger'),
+        ('officer@demo.com',  'Priya Nair',          'Procurement Officer',  'badge-info'),
+        ('approver@demo.com', 'Rajesh Iyer',         'Approver',             'badge-success'),
+        ('auditor@demo.com',  'Meera Krishnamurthy', 'Auditor',              'badge-secondary'),
+        ('vendor1@demo.com',  'Tata Tech Supplies',  'Vendor',               'badge-warning'),
+        ('vendor2@demo.com',  'Infosys Procurement', 'Vendor',               'badge-warning'),
+        ('vendor3@demo.com',  'Wipro IT Solutions',  'Vendor',               'badge-warning'),
+      ] %}
+      <tr class="tbl-row">
+        <td><code style="font-size: 12px; font-family: monospace; color: var(--text-primary);">{{ email }}</code></td>
+        <td style="font-weight: 600; color: var(--text-primary);">{{ name }}</td>
+        <td><span class="badge {{ badge }}">{{ role }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ── 8. Request Status Reference ───────────────────────────────── -->
+<div class="card docs-section" style="padding: 24px;">
+  <div style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 14px;">Request Status Reference</div>
+  <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+    {% for status, color, desc in [
+      ('DRAFT',       '#94a3b8', 'Created but not yet submitted'),
+      ('SUBMITTED',   '#3b82f6', 'Submitted and awaiting approval'),
+      ('UNDER_REVIEW','#f59e0b', 'Being reviewed by an approver'),
+      ('APPROVED',    '#10b981', 'Approved — RFQ can be issued'),
+      ('REJECTED',    '#ef4444', 'Rejected — requires revision or cancellation'),
+      ('RFQ_ISSUED',  '#8b5cf6', 'RFQ sent to vendors, awaiting quotes'),
+      ('QUOTED',      '#06b6d4', 'At least one vendor quote received'),
+      ('PO_ISSUED',   '#16a34a', 'Winning vendor selected, PO issued — complete'),
+    ] %}
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; min-width: 280px; flex: 1;">
+      <div style="width: 10px; height: 10px; border-radius: 50%; background: {{ color }}; flex-shrink: 0;"></div>
+      <div>
+        <div style="font-size: 12px; font-weight: 700; color: var(--text-primary);">{{ status.replace('_', ' ') }}</div>
+        <div style="font-size: 11.5px; color: var(--text-muted);">{{ desc }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

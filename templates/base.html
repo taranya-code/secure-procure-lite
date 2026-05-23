@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}SecureProcure{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── CSS Variables — Light (default) ───────────────────── */
+    :root {
+      --bg-page:      #f1f5f9;
+      --bg-card:      #ffffff;
+      --bg-subtle:    #f8fafc;
+      --bg-input:     #ffffff;
+      --border:       #e2e8f0;
+      --border-input: #d1d5db;
+      --text-primary: #0f172a;
+      --text-secondary:#374151;
+      --text-muted:   #64748b;
+      --text-faint:   #94a3b8;
+      --shadow:       0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    /* ── CSS Variables — Dark ───────────────────────────────── */
+    body.dark {
+      --bg-page:      #0f172a;
+      --bg-card:      #1e293b;
+      --bg-subtle:    #162032;
+      --bg-input:     #1e293b;
+      --border:       #334155;
+      --border-input: #475569;
+      --text-primary: #f1f5f9;
+      --text-secondary:#cbd5e1;
+      --text-muted:   #94a3b8;
+      --text-faint:   #64748b;
+      --shadow:       0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    body { background: var(--bg-page); transition: background 0.2s, color 0.2s; }
+    body.dark { color: var(--text-secondary); }
+
+    /* ── Sidebar (always dark) ──────────────────────────────── */
+    .sidebar { width: 220px; min-width: 220px; background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); display: flex; flex-direction: column; height: 100vh; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: #94a3b8; text-decoration: none; transition: all 0.15s; margin: 1px 8px; white-space: nowrap; }
+    .nav-item:hover { background: rgba(255,255,255,0.08); color: #e2e8f0; }
+    .nav-item.active { background: rgba(59,130,246,0.2); color: #93c5fd; border-left: 2px solid #3b82f6; padding-left: 12px; }
+    .nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+    .nav-badge { margin-left: auto; background: #ef4444; color: white; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; }
+
+    /* ── Cards ──────────────────────────────────────────────── */
+    .card { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+    .stat-card { background: var(--bg-card); border-radius: 14px; border: 1px solid var(--border); padding: 20px 24px; box-shadow: var(--shadow); }
+
+    /* ── Badges ─────────────────────────────────────────────── */
+    .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; }
+    .badge-success  { background: #1d4ed8; color: white; }
+    .badge-warning  { background: #f59e0b; color: white; }
+    .badge-danger   { background: #dc2626; color: white; }
+    .badge-info     { background: #0ea5e9; color: white; }
+    .badge-secondary{ background: #475569; color: white; }
+    .badge-purple   { background: #7c3aed; color: white; }
+    .text-success   { color: #047857; }
+    .text-warning   { color: #b45309; }
+    .text-danger    { color: #b91c1c; }
+    .text-info      { color: #0ea5e9; }
+    .text-muted     { color: var(--text-muted); }
+    .value-positive { font-weight: 700; color: #047857; }
+    .value-neutral  { font-weight: 700; color: #1e3a8a; }
+    .value-warning  { font-weight: 700; color: #c2410c; }
+    .value-danger   { font-weight: 700; color: #b91c1c; }
+    body.dark .badge-secondary { background: #334155; color: #f8fafc; }
+
+    /* ── Buttons ────────────────────────────────────────────── */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; text-decoration: none; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-outline { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-input); }
+    .btn-outline:hover { background: var(--bg-subtle); }
+    .btn-ghost { background: transparent; color: var(--text-muted); }
+    .btn-ghost:hover { background: var(--bg-subtle); color: var(--text-primary); }
+    .btn-success { background: #16a34a; color: white; }
+    .btn-success:hover { background: #15803d; }
+
+    /* ── Form inputs ────────────────────────────────────────── */
+    .form-input { display: block; width: 100%; border: 1px solid var(--border-input); border-radius: 8px; padding: 8px 12px; font-size: 13.5px; color: var(--text-primary); background: var(--bg-input); outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+    .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .form-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; }
+
+    /* ── Table ──────────────────────────────────────────────── */
+    .tbl-head th { padding: 10px 16px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg-subtle); border-bottom: 1px solid var(--border); text-align: left; }
+    .tbl-row td { padding: 12px 16px; font-size: 13.5px; color: var(--text-secondary); border-bottom: 1px solid var(--border); }
+    .tbl-row:hover td { background: var(--bg-subtle); }
+    .tbl-row:last-child td { border-bottom: none; }
+
+    /* ── Flash messages ─────────────────────────────────────── */
+    .flash-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .flash-danger  { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .flash-warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .flash-info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+
+    /* ── Misc ───────────────────────────────────────────────── */
+    .page-header { padding: 20px 28px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .dot-green { background: #22c55e; }
+    .dot-yellow { background: #eab308; }
+    .dot-red { background: #ef4444; }
+    .dot-blue { background: #3b82f6; }
+    .dot-gray { background: #9ca3af; }
+
+    /* ── Theme toggle button ────────────────────────────────── */
+    .theme-toggle { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-subtle); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.15s; }
+    .theme-toggle:hover { background: var(--border); }
+
+    /* ── Top bar ────────────────────────────────────────────── */
+    .topbar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 0 28px; height: 52px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+
+    /* ── Main content area ──────────────────────────────────── */
+    .main-content { flex: 1; overflow-y: auto; padding: 24px 28px; }
+
+    /* ── Modal dark mode ────────────────────────────────────── */
+    body.dark .flash-success { background: #14532d; border-color: #166534; color: #bbf7d0; }
+    body.dark .flash-danger  { background: #450a0a; border-color: #991b1b; color: #fecaca; }
+    body.dark .flash-warning { background: #431407; border-color: #92400e; color: #fde68a; }
+    body.dark .flash-info    { background: #1e3a5f; border-color: #1e40af; color: #bfdbfe; }
+
+    /* ── KPI info tooltips ───────────────────────────────────── */
+    .kpi-tooltip {
+      position: absolute; top: calc(100% + 8px); right: 0; z-index: 200;
+      width: 280px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px; font-size: 12px;
+      color: var(--text-secondary); line-height: 1.6;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .kpi-tooltip::before {
+      content: ''; position: absolute; bottom: 100%; right: 18px;
+      border: 6px solid transparent; border-bottom-color: var(--border);
+    }
+    .kpi-tooltip::after {
+      content: ''; position: absolute; bottom: 100%; right: 19px;
+      border: 5px solid transparent; border-bottom-color: var(--bg-card);
+    }
+  </style>
+</head>
+<body class="h-full flex overflow-hidden" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+
+<!-- ═══ SIDEBAR ═══════════════════════════════════════════════════════════ -->
+<aside class="sidebar flex-shrink-0">
+
+  <!-- Logo -->
+  <div style="padding: 18px 16px 14px; border-bottom: 1px solid rgba(255,255,255,0.07);">
+    <a href="/dashboard" style="text-decoration: none; display: block;">
+      <div style="font-size: 17px; font-weight: 800; color: white; letter-spacing: -0.5px;">
+        Secure<span style="color: #34d399;">Procure</span>
+      </div>
+      <div style="font-size: 10px; color: #475569; margin-top: 1px; font-weight: 500; letter-spacing: 0.04em;">ENTERPRISE PORTAL</div>
+    </a>
+  </div>
+
+  <!-- User pill -->
+  <div style="padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,#3b82f6,#8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0;">
+        {{ current_user.name[0].upper() }}
+      </div>
+      <div style="min-width: 0;">
+        <div style="font-size: 13px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ current_user.name }}</div>
+        <div style="font-size: 10.5px; color: #64748b; margin-top: 1px;">{{ current_user.role.replace('_',' ') }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav style="flex: 1; padding: 10px 0; overflow-y: auto;">
+    <div style="padding: 6px 14px 4px; font-size: 9.5px; font-weight: 700; color: #334155; letter-spacing: 0.1em; text-transform: uppercase;">Main</div>
+
+    <a href="/dashboard" class="nav-item {% if request.path == '/dashboard' %}active{% endif %}">
+      <span class="nav-icon">⊞</span> Dashboard
+    </a>
+
+    {% if current_user.role != 'VENDOR' %}
+    <a href="/requests" class="nav-item {% if '/requests' in request.path %}active{% endif %}">
+      <span class="nav-icon">📋</span> Purchase Requests
+    </a>
+    {% endif %}
+
+    {% if current_user.role in ['APPROVER', 'ADMIN'] %}
+    <a href="/approvals" class="nav-item {% if '/approvals' in request.path %}active{% endif %}">
+      <span class="nav-icon">✅</span> Approvals
+      {% if pending_approval_count > 0 %}<span class="nav-badge">{{ pending_approval_count }}</span>{% endif %}
+    </a>
+    {% endif %}
+
+    {% if current_user.role in ['PROCUREMENT_OFFICER', 'ADMIN', 'APPROVER', 'AUDITOR'] %}
+    <a href="/rfq" class="nav-item {% if '/rfq' in request.path %}active{% endif %}">
+      <span class="nav-icon">📨</span> RFQ &amp; Quotations
+    </a>
+    {% endif %}
+
+    {% if current_user.role == 'VENDOR' %}
+    <a href="/my-quotes" class="nav-item {% if '/my-quotes' in request.path %}active{% endif %}">
+      <span class="nav-icon">💬</span> My Quotes
+    </a>
+    {% endif %}
+
+    {% if current_user.role in ['ADMIN', 'PROCUREMENT_OFFICER', 'AUDITOR'] %}
+    <a href="/vendors" class="nav-item {% if '/vendors' in request.path %}active{% endif %}">
+      <span class="nav-icon">🏭</span> Vendors
+    </a>
+    {% endif %}
+
+    {% if current_user.role in ['AUDITOR', 'ADMIN'] %}
+    <div style="padding: 10px 14px 4px; font-size: 9.5px; font-weight: 700; color: #334155; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px;">Compliance</div>
+    <a href="/audit" class="nav-item {% if '/audit' in request.path %}active{% endif %}">
+      <span class="nav-icon">🛡</span> Audit Logs
+    </a>
+    {% endif %}
+
+    <div style="padding: 10px 14px 4px; font-size: 9.5px; font-weight: 700; color: #334155; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px;">Analytics</div>
+    <a href="/reports" class="nav-item {% if '/reports' in request.path %}active{% endif %}">
+      <span class="nav-icon">📊</span> Reports
+    </a>
+    <a href="/notifications" class="nav-item {% if '/notifications' in request.path %}active{% endif %}">
+      <span class="nav-icon">🔔</span> Notifications
+      <span id="notif-badge" style="display:none;" class="nav-badge"></span>
+    </a>
+
+    {% if current_user.role == 'ADMIN' %}
+    <div style="padding: 10px 14px 4px; font-size: 9.5px; font-weight: 700; color: #334155; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px;">Admin</div>
+    <a href="/admin/users" class="nav-item {% if '/admin/users' in request.path %}active{% endif %}">
+      <span class="nav-icon">👥</span> Users
+    </a>
+    <a href="/admin/panel" class="nav-item {% if '/admin/panel' in request.path %}active{% endif %}">
+      <span class="nav-icon">⚙</span> Admin Panel
+    </a>
+    <a href="/admin/security-intelligence" class="nav-item {% if '/admin/security-intelligence' in request.path %}active{% endif %}">
+      <span class="nav-icon">🧠</span> Security Intelligence
+    </a>
+    <a href="/admin/docs" class="nav-item {% if '/admin/docs' in request.path %}active{% endif %}">
+      <span class="nav-icon">📖</span> Docs
+    </a>
+    {% endif %}
+  </nav>
+
+  <!-- Sign out -->
+  <div style="padding: 10px 8px; border-top: 1px solid rgba(255,255,255,0.07);">
+    <form action="/logout" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <button type="submit" class="nav-item" style="width:100%; background:none; border:none; cursor:pointer; color:#f87171;">
+        <span class="nav-icon">↩</span> Sign Out
+      </button>
+    </form>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ══════════════════════════════════════════════════════════════ -->
+<div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div>{% block page_header %}{% endblock %}</div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--bg-subtle); border: 1px solid var(--border); padding: 3px 10px; border-radius: 20px;">
+        {{ current_user.role.replace('_',' ') }}
+      </span>
+      <!-- Theme toggle -->
+      <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
+    </div>
+  </header>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div style="padding: 12px 28px 0; flex-shrink: 0;">
+    {% for cat, msg in messages %}
+    <div class="flash-{{ cat }}" style="padding: 10px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+      {% if cat == 'success' %}✓{% elif cat == 'danger' %}✗{% elif cat == 'warning' %}⚠{% else %}ℹ{% endif %}
+      {{ msg }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <!-- Content -->
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<script>
+// ── Theme toggle ────────────────────────────────────────────────
+function applyTheme(dark) {
+  document.body.classList.toggle('dark', dark);
+  document.getElementById('theme-btn').textContent = dark ? '☀️' : '🌙';
+  // Update Chart.js defaults for dark mode
+  if (window.Chart) {
+    Chart.defaults.color = dark ? '#94a3b8' : '#64748b';
+    Chart.defaults.borderColor = dark ? '#334155' : '#e2e8f0';
+  }
+}
+function toggleTheme() {
+  const dark = !document.body.classList.contains('dark');
+  localStorage.setItem('sp-theme', dark ? 'dark' : 'light');
+  applyTheme(dark);
+}
+// Apply saved theme immediately (before paint)
+(function() {
+  const saved = localStorage.getItem('sp-theme');
+  if (saved === 'dark') applyTheme(true);
+})();
+
+// ── KPI info tooltips ───────────────────────────────────────────
+document.addEventListener('click', function(e) {
+  // Toggle tooltip on ⓘ click
+  const btn = e.target.closest('.kpi-info-btn');
+  if (btn) {
+    e.stopPropagation();
+    const tipId = 'tip-' + btn.dataset.tip;
+    const tip = document.getElementById(tipId);
+    if (!tip) return;
+    const isVisible = tip.style.display !== 'none';
+    // Close all open tooltips first
+    document.querySelectorAll('.kpi-tooltip').forEach(t => t.style.display = 'none');
+    if (!isVisible) tip.style.display = 'block';
+    return;
+  }
+  // Click anywhere else closes all tooltips
+  document.querySelectorAll('.kpi-tooltip').forEach(t => t.style.display = 'none');
+});
+
+// ── Notification badge ──────────────────────────────────────────
+async function loadNotifCount() {
+  try {
+    const r = await fetch('/api/notifications');
+    const data = await r.json();
+    const badge = document.getElementById('notif-badge');
+    if (badge && data.length > 0) {
+      badge.textContent = data.length;
+      badge.style.display = 'inline';
+    }
+  } catch(e) {}
+}
+loadNotifCount();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

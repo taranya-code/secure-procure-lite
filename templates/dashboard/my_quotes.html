@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}My Quotes{% endblock %}
+{% block page_header %}
+  <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">My Quotes</div>
+{% endblock %}
+{% block content %}
+
+{% if open_rfqs %}
+<div style="margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Open RFQs — Submit Your Quotation</div>
+    <span style="background: #dbeafe; color: #1e40af; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 20px;">{{ open_rfqs|length }} open</span>
+  </div>
+  {% for rfq in open_rfqs %}
+  <div class="card" style="padding: 20px; margin-bottom: 12px; border-left: 4px solid #3b82f6;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px;">
+      <div>
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">{{ rfq.request.title }}</div>
+        <div style="display: flex; gap: 16px;">
+          <span style="font-size: 12.5px; color: var(--text-muted);">Budget: <strong>{{ fmt_currency(rfq.request.estimated_budget, rfq.request.currency) }}</strong></span>
+          <span style="font-size: 12.5px; color: var(--text-muted);">Deadline: <strong>{{ rfq.deadline.strftime('%b %d, %Y') }}</strong></span>
+        </div>
+        {% if rfq.notes %}
+        <div style="font-size: 12px; color: var(--text-faint); margin-top: 4px; font-style: italic;">{{ rfq.notes }}</div>
+        {% endif %}
+      </div>
+      <button onclick="toggleForm('form-{{ rfq.id }}')" class="btn btn-primary btn-sm" style="flex-shrink: 0;">
+        Submit Quote
+      </button>
+    </div>
+
+    {% if rfq.request.items %}
+    <div style="background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px;">
+      <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">Items Requested</div>
+      {% for item in rfq.request.items %}
+      <div style="font-size: 12.5px; color: var(--text-secondary); padding: 2px 0;">
+        • {{ item.item_name }} × {{ item.quantity|int }} {{ item.unit }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div id="form-{{ rfq.id }}" style="display: none;">
+      <form action="/my-quotes/{{ rfq.id }}/submit" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+          <div>
+            <label class="form-label">Total Amount ($) *</label>
+            <input type="number" name="total_amount" required step="0.01" min="1" class="form-input" placeholder="0.00"/>
+          </div>
+          <div>
+            <label class="form-label">Delivery Days *</label>
+            <input type="number" name="delivery_days" required min="1" value="14" class="form-input"/>
+          </div>
+          <div>
+            <label class="form-label">Quote Valid (days)</label>
+            <input type="number" name="validity_days" value="30" min="1" class="form-input"/>
+          </div>
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label class="form-label">Notes / Terms</label>
+          <textarea name="notes" rows="2" class="form-input" placeholder="Warranty, payment terms, inclusions, delivery conditions…"></textarea>
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <label class="form-label" style="margin-bottom: 0;">Line Items <span style="font-size: 11px; color: var(--text-faint); font-weight: 400;">(optional breakdown)</span></label>
+            <button type="button" onclick="addQuoteItem('items-{{ rfq.id }}')" class="btn btn-ghost btn-sm">+ Add Item</button>
+          </div>
+          <div id="items-{{ rfq.id }}" style="display: flex; flex-direction: column; gap: 8px;">
+            {% for item in rfq.request.items %}
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="text" name="item_name[]" value="{{ item.item_name }}" class="form-input" style="flex: 1;"/>
+              <input type="number" name="unit_price[]" placeholder="Unit price" step="0.01" class="form-input" style="width: 110px;"/>
+              <input type="number" name="quantity[]" value="{{ item.quantity }}" class="form-input" style="width: 80px;"/>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 12px; border-top: 1px solid #f1f5f9;">
+          <button type="button" onclick="toggleForm('form-{{ rfq.id }}')" class="btn btn-outline">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit Quotation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding: 40px; text-align: center; margin-bottom: 20px;">
+  <div style="font-size: 32px; margin-bottom: 10px;">📭</div>
+  <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">No Open RFQs</div>
+  <div style="font-size: 13px; color: var(--text-faint);">No RFQs are currently assigned to you. Check back later.</div>
+</div>
+{% endif %}
+
+{% if my_quotations %}
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+  <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">My Submitted Quotes</div>
+  <span style="background: var(--border); color: var(--text-muted); font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 20px;">{{ my_quotations|length }}</span>
+</div>
+<div class="card" style="overflow: hidden;">
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead><tr class="tbl-head">
+      <th>Request</th>
+      <th>Amount</th>
+      <th>Delivery</th>
+      <th>AI Score</th>
+      <th>Status</th>
+      <th>Submitted</th>
+    </tr></thead>
+    <tbody>
+      {% for q in my_quotations %}
+      <tr class="tbl-row">
+        <td style="font-weight: 600; font-size: 13px; color: var(--text-primary); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ q.rfq.request.title }}</td>
+        <td style="font-weight: 700; color: var(--text-primary);">{{ fmt_currency(q.total_amount, q.rfq.request.currency) }}</td>
+        <td style="color: var(--text-muted);">{{ q.delivery_days }} days</td>
+        <td>
+          {% if q.ai_score %}
+          <span style="font-weight: 700; color: {% if q.ai_score >= 80 %}#16a34a{% elif q.ai_score >= 60 %}#d97706{% else %}#dc2626{% endif %};">
+            {{ q.ai_score|round(1) }}/100
+          </span>
+          {% else %}<span style="color: var(--text-faint);">—</span>{% endif %}
+        </td>
+        <td><span class="badge badge-{{ status_badge(q.status) }}">{{ q.status }}</span></td>
+        <td style="color: var(--text-faint); font-size: 12px;">{{ q.submitted_at.strftime('%b %d, %Y') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleForm(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function addQuoteItem(containerId) {
+  const c = document.getElementById(containerId);
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;gap:8px;align-items:center;';
+  div.innerHTML = `
+    <input type="text" name="item_name[]" placeholder="Item name" class="form-input" style="flex:1;"/>
+    <input type="number" name="unit_price[]" placeholder="Unit price" step="0.01" class="form-input" style="width:110px;"/>
+    <input type="number" name="quantity[]" value="1" class="form-input" style="width:80px;"/>
+    <button type="button" onclick="this.parentElement.remove()" class="btn btn-ghost btn-sm" style="color:#ef4444;flex-shrink:0;">✕</button>
+  `;
+  c.appendChild(div);
+}
+</script>
+{% endblock %}

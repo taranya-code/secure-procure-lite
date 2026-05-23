@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Edit Vendor Risk — {{ vendor.company_name }}{% endblock %}
+{% block page_header %}
+  <div style="font-size:16px;font-weight:700;color:var(--text-primary);">Edit Vendor Risk — {{ vendor.company_name }}</div>
+{% endblock %}
+{% block content %}
+<div class="card" style="max-width:720px;">
+  <form method="post" action="{{ url_for('admin.update_vendor_risk', vendor_id=vendor.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <label class="form-label">Trust Score (0-100)</label>
+        <input name="trust_score" class="form-input" value="{{ vendor.trust_score or '' }}" />
+      </div>
+      <div>
+        <label class="form-label">Fraud Probability (0-1)</label>
+        <input name="fraud_probability" class="form-input" value="{{ vendor.fraud_probability or '' }}" />
+      </div>
+      <div>
+        <label class="form-label">Compliance Score (0-100)</label>
+        <input name="compliance_score" class="form-input" value="{{ vendor.compliance_score or '' }}" />
+      </div>
+      <div>
+        <label class="form-label">Eligibility Score (0-100)</label>
+        <input name="eligibility_score" class="form-input" value="{{ vendor.eligibility_score or '' }}" />
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <label><input type="checkbox" name="ai_risk_blocked" {% if vendor.ai_risk_blocked %}checked{% endif %}/> Block vendor from RFQs</label>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
+      <a href="{{ url_for('admin.vendors_risk') }}" class="btn btn-ghost">Cancel</a>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Vendors{% endblock %}
+{% block page_header %}
+  <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">Vendor Management</div>
+{% endblock %}
+{% block content %}
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; align-items: center;">
+  <form style="display: flex; gap: 8px; flex: 1; min-width: 0;" method="get">
+    <div style="position: relative; max-width: 280px; flex: 1;">
+      <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-faint); font-size: 14px;">🔍</span>
+      <input type="text" name="search" value="{{ search }}" placeholder="Search vendors…"
+        class="form-input" style="padding-left: 32px;"/>
+    </div>
+    <select name="status" class="form-input" style="width: 150px;">
+      <option value="">All Status</option>
+      {% for s in ['PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED'] %}
+      <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-outline">Filter</button>
+    {% if status_filter or search %}<a href="/vendors" class="btn btn-ghost">Clear</a>{% endif %}
+  </form>
+</div>
+
+<div class="card" style="overflow: hidden;">
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead><tr class="tbl-head">
+      <th>Company</th>
+      <th>Contact</th>
+      <th>Category</th>
+      <th>Status</th>
+      <th>Reputation</th>
+      <th>Orders</th>
+      <th>On-Time</th>
+      <th>AI Risk</th>
+      <th>Eligibility</th>
+      <th>Actions</th>
+    </tr></thead>
+    <tbody>
+      {% for v in vendors %}
+      <tr class="tbl-row">
+        <td>
+          <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);">{{ v.company_name }}</div>
+          <div style="font-size: 11.5px; color: var(--text-faint); margin-top: 1px;">{{ v.registration_no or 'No reg. no.' }}</div>
+        </td>
+        <td style="color: var(--text-muted); font-size: 12.5px;">{{ v.user.email }}</td>
+        <td style="color: var(--text-muted);">{{ v.category or '—' }}</td>
+        <td><span class="badge badge-{{ status_badge(v.status) }}">{{ v.status }}</span></td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 60px; background: var(--border); border-radius: 4px; height: 5px;">
+              <div style="background: {% if v.reputation_score >= 85 %}#22c55e{% elif v.reputation_score >= 70 %}#f59e0b{% else %}#ef4444{% endif %}; width: {{ v.reputation_score }}%; height: 5px; border-radius: 4px;"></div>
+            </div>
+            <span style="font-size: 13px; font-weight: 700; color: {% if v.reputation_score >= 85 %}#16a34a{% elif v.reputation_score >= 70 %}#d97706{% else %}#dc2626{% endif %};">★ {{ v.reputation_score|round(1) }}</span>
+          </div>
+        </td>
+        <td style="color: var(--text-muted); font-weight: 600;">{{ v.total_orders }}</td>
+        <td>
+          <span style="font-size: 13px; font-weight: 700; color: {% if v.on_time_delivery >= 90 %}#16a34a{% elif v.on_time_delivery >= 75 %}#d97706{% else %}#dc2626{% endif %};">
+            {{ v.on_time_delivery|round(1) }}%
+          </span>
+        </td>
+        <td>
+          <span style="font-size: 13px; font-weight: 700; color: {% if v.ai_risk_blocked %}#dc2626{% elif v.eligibility_score >= 70 %}#16a34a{% else %}#d97706{% endif %};">
+            {% if v.ai_risk_blocked %}BLOCKED{% else %}OK{% endif %}
+          </span>
+        </td>
+        <td style="color: var(--text-muted); font-weight: 600;">{{ v.eligibility_score|round(1) }}%</td>
+        <td>
+          {% if current_user.role in ['ADMIN', 'PROCUREMENT_OFFICER'] %}
+          <div style="display: flex; gap: 4px;">
+            {% if v.status == 'PENDING' %}
+            <form action="/vendors/{{ v.id }}/status" method="post" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <input type="hidden" name="status" value="APPROVED"/>
+              <button type="submit" class="btn btn-success btn-sm">✓ Approve</button>
+            </form>
+            <form action="/vendors/{{ v.id }}/status" method="post" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <input type="hidden" name="status" value="REJECTED"/>
+              <button type="submit" class="btn btn-danger btn-sm">✕ Reject</button>
+            </form>
+            {% elif v.status == 'APPROVED' %}
+            <form action="/vendors/{{ v.id }}/status" method="post" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <input type="hidden" name="status" value="SUSPENDED"/>
+              <button type="submit" class="btn btn-outline btn-sm">Suspend</button>
+            </form>
+            {% elif v.status == 'SUSPENDED' %}
+            <form action="/vendors/{{ v.id }}/status" method="post" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <input type="hidden" name="status" value="APPROVED"/>
+              <button type="submit" class="btn btn-success btn-sm">Re-activate</button>
+            </form>
+            {% endif %}
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="text-align: center; padding: 48px 16px; color: var(--text-faint); font-size: 13px;">No vendors found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}RFQ — {{ rfq.request.title }}{% endblock %}
+{% block page_header %}
+  <div>
+    <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 500px;">RFQ: {{ rfq.request.title }}</div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Request For Quotation</div>
+  </div>
+{% endblock %}
+{% block content %}
+
+<!-- RFQ summary card -->
+<div class="card" style="padding: 20px; margin-bottom: 20px;">
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+    <div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;">Status</div>
+      <span class="badge badge-{{ status_badge(rfq.status) }}" style="font-size: 12px;">{{ rfq.status }}</span>
+    </div>
+    <div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;">Deadline</div>
+      <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ rfq.deadline.strftime('%b %d, %Y') }}</div>
+    </div>
+    <div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;">Budget</div>
+      <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);">{{ fmt_currency(rfq.request.estimated_budget, rfq.request.currency) }}</div>
+    </div>
+    <div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;">Vendors Invited</div>
+      <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ rfq.vendors|length }}</div>
+    </div>
+    <div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;">Quotes Received</div>
+      <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ rfq.quotations|length }}</div>
+    </div>
+    <div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;">Issued By</div>
+      <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ rfq.issuer.name }}</div>
+    </div>
+  </div>
+  {% if rfq.notes %}
+  <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid #f1f5f9; font-size: 13px; color: var(--text-muted);">
+    <span style="font-weight: 600; color: var(--text-secondary);">Notes: </span>{{ rfq.notes }}
+  </div>
+  {% endif %}
+</div>
+
+<!-- AI Analysis -->
+{% if rfq.quotations and rfq.status == 'OPEN' and current_user.role in ['PROCUREMENT_OFFICER', 'ADMIN'] %}
+<div style="display: flex; justify-content: flex-end; margin-bottom: 16px; gap: 10px; align-items: center;">
+  <div id="ai-msg" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; font-size: 13px; padding: 8px 14px; border-radius: 8px;"></div>
+  <button onclick="runAI()" id="ai-btn" class="btn btn-primary">
+    <span style="font-size: 15px;">🤖</span> Analyze with AI
+  </button>
+</div>
+{% endif %}
+
+<!-- Quotations -->
+{% if rfq.quotations %}
+<div class="card" style="overflow: hidden;">
+  <div style="padding: 14px 20px; background: var(--bg-subtle); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+    <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Quotations</span>
+    <span style="font-size: 11px; color: var(--text-faint); background: var(--border); padding: 1px 8px; border-radius: 20px;">{{ rfq.quotations|length }}</span>
+    {% if rfq.status == 'OPEN' %}
+    <span style="margin-left: auto; font-size: 11px; color: #16a34a; background: #dcfce7; padding: 2px 10px; border-radius: 20px; font-weight: 600;">Sorted by price</span>
+    {% endif %}
+  </div>
+
+  <div>
+    {% for q in rfq.quotations|sort(attribute='total_amount') %}
+    <div style="padding: 20px; border-bottom: 1px solid #f1f5f9; {% if q.status == 'SELECTED' %}background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-left: 4px solid #22c55e;{% elif q.status == 'REJECTED' %}opacity: 0.6;{% endif %}">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+            <span style="font-size: 14px; font-weight: 700; color: var(--text-primary);">{{ q.vendor.company_name }}</span>
+            {% if q.status == 'SELECTED' %}
+            <span class="badge badge-success">✓ SELECTED — PO Issued</span>
+            {% elif q.status == 'REJECTED' %}
+            <span class="badge badge-secondary">REJECTED</span>
+            {% endif %}
+            <span style="font-size: 12px; color: #d97706; font-weight: 600;">★ {{ q.vendor.reputation_score }}</span>
+          </div>
+
+          <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 8px;">
+            <span style="font-size: 20px; font-weight: 800; color: var(--text-primary);">{{ fmt_currency(q.total_amount, rfq.request.currency) }}</span>
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <span style="font-size: 12.5px; color: var(--text-muted);">🚚 {{ q.delivery_days }} days</span>
+              <span style="font-size: 12.5px; color: var(--text-muted);">📅 {{ q.validity_days }}d validity</span>
+            </div>
+          </div>
+
+          {% if q.notes %}
+          <div style="font-size: 12px; color: var(--text-faint); margin-bottom: 8px; font-style: italic;">{{ q.notes }}</div>
+          {% endif %}
+
+          {% if q.ai_score %}
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">AI Score</span>
+            <span style="font-size: 14px; font-weight: 800; color: {% if q.ai_score >= 80 %}#16a34a{% elif q.ai_score >= 60 %}#d97706{% else %}#dc2626{% endif %};">
+              {{ q.ai_score|round(1) }}/100
+            </span>
+            <div style="width: 100px; background: var(--border); border-radius: 4px; height: 6px;">
+              <div style="background: {% if q.ai_score >= 80 %}#22c55e{% elif q.ai_score >= 60 %}#f59e0b{% else %}#ef4444{% endif %}; width: {{ q.ai_score }}%; height: 6px; border-radius: 4px;"></div>
+            </div>
+            {% if q.ai_summary %}
+            <span style="font-size: 11.5px; color: var(--text-muted); font-style: italic;">{{ q.ai_summary }}</span>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          {% if q.items %}
+          <div style="background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-top: 8px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">Line Items</div>
+            {% for item in q.items %}
+            <div style="display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-secondary); padding: 2px 0; border-bottom: 1px solid #f1f5f9;">
+              <span>{{ item.item_name }} × {{ item.quantity|int }}</span>
+              <span style="font-weight: 600;">{{ fmt_currency(item.unit_price, rfq.request.currency) }} ea = {{ fmt_currency(item.total, rfq.request.currency) }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        {% if rfq.status == 'OPEN' and q.status == 'SUBMITTED' and current_user.role in ['PROCUREMENT_OFFICER', 'ADMIN'] %}
+        <div style="flex-shrink: 0;">
+          <form action="/rfq/{{ rfq.id }}/select/{{ q.id }}" method="post"
+            onsubmit="return confirm('Select {{ q.vendor.company_name }} as the winner? This will close the RFQ and issue a Purchase Order.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button type="submit" class="btn btn-success" style="white-space: nowrap;">Select &amp; Issue PO</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="card" style="padding: 48px; text-align: center;">
+  <div style="font-size: 32px; margin-bottom: 10px;">📭</div>
+  <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">No Quotations Yet</div>
+  <div style="font-size: 13px; color: var(--text-faint);">Vendors have been notified. Quotations will appear here when submitted.</div>
+</div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+async function runAI() {
+  const btn = document.getElementById('ai-btn');
+  const msg = document.getElementById('ai-msg');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="font-size:15px;">🤖</span> Analyzing…';
+  msg.style.display = 'none';
+  try {
+    const r = await fetch('/api/rfq/{{ rfq.id }}/analyze', {
+      method: 'POST',
+      headers: {'X-CSRFToken': '{{ csrf_token() }}', 'Content-Type': 'application/json'},
+    });
+    const data = await r.json();
+    msg.style.display = 'block';
+    if (data.ok) {
+      msg.textContent = data.mock
+        ? '⚡ Mock scores applied (add ANTHROPIC_API_KEY for real AI). Refreshing…'
+        : '✓ AI analysis complete! Refreshing…';
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      msg.style.background = '#fef2f2';
+      msg.style.borderColor = '#fecaca';
+      msg.style.color = '#991b1b';
+      msg.textContent = '✗ AI error: ' + data.error;
+      btn.disabled = false;
+      btn.innerHTML = '<span style="font-size:15px;">🤖</span> Analyze with AI';
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '<span style="font-size:15px;">🤖</span> Analyze with AI';
+  }
+}
+</script>
+{% endblock %}

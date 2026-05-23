@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Audit Logs{% endblock %}
+{% block page_header %}
+  <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">Audit Logs</div>
+{% endblock %}
+{% block content %}
+
+<!-- Tabs -->
+<div style="display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg-subtle); padding: 4px; border-radius: 10px; width: fit-content;">
+  <a href="?tab=logs" style="padding: 7px 18px; border-radius: 7px; font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.15s;
+    {% if tab == 'logs' %}background: white; color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.08);{% else %}color: var(--text-muted);{% endif %}">
+    Audit Trail
+  </a>
+  <a href="?tab=fraud" style="padding: 7px 18px; border-radius: 7px; font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+    {% if tab == 'fraud' %}background: white; color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.08);{% else %}color: var(--text-muted);{% endif %}">
+    Fraud Alerts
+    {% if fraud_alerts %}
+    <span style="background: #ef4444; color: white; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;">{{ fraud_alerts|length }}</span>
+    {% endif %}
+  </a>
+</div>
+
+{% if tab == 'logs' %}
+<!-- Filters -->
+<form style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;" method="get">
+  <input type="hidden" name="tab" value="logs"/>
+  <select name="entity_type" class="form-input" style="width: 180px;">
+    <option value="">All Entity Types</option>
+    {% for e in entity_types %}
+    <option value="{{ e }}" {% if filter_entity == e %}selected{% endif %}>{{ e.replace('_',' ') }}</option>
+    {% endfor %}
+  </select>
+  <select name="action" class="form-input" style="width: 180px;">
+    <option value="">All Actions</option>
+    {% for a in actions %}
+    <option value="{{ a }}" {% if filter_action == a %}selected{% endif %}>{{ a.replace('_',' ') }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-outline">Filter</button>
+  <a href="/audit?tab=logs" class="btn btn-ghost">Clear</a>
+</form>
+
+<div class="card" style="overflow: hidden;">
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead><tr class="tbl-head">
+      <th>Timestamp</th>
+      <th>User</th>
+      <th>Action</th>
+      <th>Entity</th>
+      <th>ID</th>
+      <th>Details</th>
+      <th>IP</th>
+    </tr></thead>
+    <tbody>
+      {% for log in logs %}
+      <tr class="tbl-row">
+        <td style="color: var(--text-faint); font-size: 11.5px; white-space: nowrap;">{{ log.created_at.strftime('%m/%d %H:%M:%S') }}</td>
+        <td style="font-size: 12.5px; color: var(--text-secondary); font-weight: 500;">{{ log.user.name if log.user else 'System' }}</td>
+        <td>
+          <span style="font-size: 12px; font-weight: 600; color: {% if 'BLOCKED' in log.action %}#dc2626{% elif log.action == 'CREATE' %}#2563eb{% elif log.action == 'APPROVAL_DECISION' %}#16a34a{% else %}#374151{% endif %};">
+            {{ log.action.replace('_',' ') }}
+          </span>
+        </td>
+        <td style="font-size: 12px; color: var(--text-muted);">{{ log.entity_type.replace('_',' ') }}</td>
+        <td style="font-size: 12px; color: var(--text-faint);">#{{ log.entity_id }}</td>
+        <td style="font-size: 12px; color: var(--text-faint); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ log.details or '—' }}</td>
+        <td style="font-size: 11.5px; color: var(--text-faint);">{{ log.ip_address or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align: center; padding: 48px 16px; color: var(--text-faint); font-size: 13px;">No audit logs yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<!-- Fraud Alerts -->
+{% if fraud_alerts %}
+<div class="card" style="overflow: hidden; border-left: 4px solid #ef4444;">
+  <div style="padding: 14px 20px; background: #fef2f2; border-bottom: 1px solid #fecaca; display: flex; align-items: center; gap: 8px;">
+    <span style="font-size: 14px;">⚠</span>
+    <span style="font-size: 13px; font-weight: 700; color: #991b1b;">Self-Approval Attempts Blocked</span>
+    <span style="background: #fee2e2; color: #991b1b; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 20px;">{{ fraud_alerts|length }}</span>
+  </div>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead><tr class="tbl-head">
+      <th>Timestamp</th>
+      <th>User</th>
+      <th>Request ID</th>
+      <th>IP</th>
+    </tr></thead>
+    <tbody>
+      {% for log in fraud_alerts %}
+      <tr class="tbl-row" style="background: #fff5f5;">
+        <td style="color: var(--text-muted); font-size: 12px; white-space: nowrap;">{{ log.created_at.strftime('%b %d, %Y %H:%M') }}</td>
+        <td style="font-weight: 700; color: #dc2626; font-size: 13px;">{{ log.user.name if log.user else '—' }}</td>
+        <td style="color: var(--text-muted);">#{{ log.entity_id }}</td>
+        <td style="color: var(--text-faint); font-size: 12px;">{{ log.ip_address or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="padding: 48px; text-align: center;">
+  <div style="font-size: 32px; margin-bottom: 10px;">🛡</div>
+  <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">No Fraud Alerts</div>
+  <div style="font-size: 13px; color: var(--text-faint);">System is clean. No self-approval attempts detected.</div>
+</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}

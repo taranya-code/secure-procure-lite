@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ pr.title }}{% endblock %}
+{% block page_header %}
+  <div>
+    <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 500px;">{{ pr.title }}</div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Purchase Request</div>
+  </div>
+{% endblock %}
+{% block content %}
+<div style="max-width: 800px;">
+
+  <!-- Header card -->
+  <div class="card" style="padding: 24px; margin-bottom: 16px;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px;">
+      <div style="flex: 1; min-width: 0;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+          <span class="badge badge-{{ status_badge(pr.status) }}">{{ pr.status.replace('_',' ') }}</span>
+          <span class="badge {% if pr.urgency == 'CRITICAL' %}badge-danger{% elif pr.urgency == 'HIGH' %}badge-warning{% elif pr.urgency == 'NORMAL' %}badge-info{% else %}badge-secondary{% endif %}">
+            {{ pr.urgency }}
+          </span>
+        </div>
+        <div style="font-size: 18px; font-weight: 800; color: var(--text-primary); margin-bottom: 6px;">{{ pr.title }}</div>
+        {% if pr.description %}
+        <div style="font-size: 13.5px; color: var(--text-muted); line-height: 1.6;">{{ pr.description }}</div>
+        {% endif %}
+      </div>
+      <div style="text-align: right; flex-shrink: 0;">
+        <div style="font-size: 28px; font-weight: 800; color: var(--text-primary);">{{ fmt_currency(pr.estimated_budget, pr.currency) }}</div>
+        <div style="font-size: 12px; color: var(--text-faint); margin-top: 2px;">{{ pr.currency }}</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 16px 0; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; margin-bottom: 16px;">
+      <div>
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px;">Category</div>
+        <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);">{{ pr.category }}</div>
+      </div>
+      <div>
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px;">Created By</div>
+        <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);">{{ pr.creator.name }}</div>
+      </div>
+      <div>
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px;">Date</div>
+        <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);">{{ pr.created_at.strftime('%b %d, %Y') }}</div>
+      </div>
+    </div>
+
+    {% if pr.status == 'DRAFT' and current_user.role in ['PROCUREMENT_OFFICER', 'ADMIN'] %}
+    <div style="display: flex; gap: 8px;">
+      <form action="/requests/{{ pr.id }}/submit" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button type="submit" class="btn btn-primary">Submit for Approval</button>
+      </form>
+      <form action="/requests/{{ pr.id }}/delete" method="post" onsubmit="return confirm('Delete this draft request permanently?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button type="submit" class="btn btn-danger">Delete Draft</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Line items -->
+  {% if pr.items %}
+  <div class="card" style="overflow: hidden; margin-bottom: 16px;">
+    <div style="padding: 14px 20px; background: var(--bg-subtle); border-bottom: 1px solid var(--border);">
+      <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Line Items</span>
+    </div>
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead><tr class="tbl-head">
+        <th>Item</th>
+        <th>Qty</th>
+        <th>Unit</th>
+        <th>Specifications</th>
+      </tr></thead>
+      <tbody>
+        {% for item in pr.items %}
+        <tr class="tbl-row">
+          <td style="font-weight: 600; color: var(--text-primary);">{{ item.item_name }}</td>
+          <td style="color: var(--text-muted);">{{ item.quantity }}</td>
+          <td style="color: var(--text-muted);">{{ item.unit }}</td>
+          <td style="color: var(--text-faint); font-size: 12.5px;">{{ item.specifications or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Approval workflow -->
+  {% if pr.approvals %}
+  <div class="card" style="overflow: hidden; margin-bottom: 16px;">
+    <div style="padding: 14px 20px; background: var(--bg-subtle); border-bottom: 1px solid var(--border);">
+      <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Approval Workflow</span>
+    </div>
+    <div>
+      {% for a in pr.approvals|sort(attribute='level') %}
+      <div style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9;">
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px;">
+            Level {{ a.level }}
+            {% if a.decider %}<span style="font-weight: 400; color: var(--text-muted);"> — {{ a.decider.name }}</span>{% endif %}
+          </div>
+          {% if a.comments %}
+          <div style="font-size: 12px; color: var(--text-faint); font-style: italic;">{{ a.comments }}</div>
+          {% endif %}
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+          {% if a.decided_at %}
+          <span style="font-size: 11.5px; color: var(--text-faint);">{{ a.decided_at.strftime('%b %d, %Y') }}</span>
+          {% endif %}
+          <span class="badge badge-{{ status_badge(a.status) }}">{{ a.status }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- RFQ link -->
+  {% if pr.rfq %}
+  <div class="card" style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;">
+    <div>
+      <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px;">RFQ Created</div>
+      <div style="font-size: 12px; color: var(--text-faint);">Status: {{ pr.rfq.status }} · Deadline: {{ pr.rfq.deadline.strftime('%b %d, %Y') }} · {{ pr.rfq.quotations|length }} quotes received</div>
+    </div>
+    <a href="/rfq/{{ pr.rfq.id }}" class="btn btn-outline btn-sm">View RFQ →</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
